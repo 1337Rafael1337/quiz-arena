@@ -134,3 +134,121 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+
+
+Die aktuelle .gitignore ist gut, aber für dein Quiz-Projekt solltest du noch ein paar Sachen hinzufügen:
+Ergänzungen für dein Projekt:
+gitignore# === DEINE BESTEHENDE .GITIGNORE BLEIBT ===
+
+# === ERGÄNZUNGEN FÜR QUIZ-PROJEKT ===
+
+# Bun-spezifische Files
+bun.lockb
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+database/backups/
+pgdata/
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Redis dumps  
+dump.rdb
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project-spezifisch
+uploads/
+temp/
+ssl/
+certificates/
+
+# Production builds (zusätzlich)
+frontend/build/
+backend/dist/
+
+# Logs (zusätzlich zu den bestehenden)
+backend/logs/
+frontend/logs/
+
+# Backup files
+*.backup
+*.bak
+Oder komplette neue .gitignore:
+Falls du eine komplett neue willst, hier ist eine optimierte Version:
+gitignore# Dependencies
+node_modules/
+*/node_modules/
+bun.lockb
+
+# Build outputs
+dist/
+build/
+frontend/build/
+backend/dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+backend/logs/
+frontend/logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+database/backups/
+dump.rdb
+
+# Cache
+.cache/
+.npm/
+.eslintcache
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Uploads & Temp
+uploads/
+temp/
+ssl/
+
+# Testing
+coverage/
+.nyc_output/
