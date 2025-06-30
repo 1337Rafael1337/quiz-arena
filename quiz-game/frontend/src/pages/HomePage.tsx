@@ -20,25 +20,17 @@ const HomePage: React.FC = () => {
       <div className="home-buttons">
         <button 
           className="btn-primary" 
-          onClick={() => navigate('/create')}
-          disabled={!connected}
-        >
-          Spiel erstellen
-        </button>
-        
-        <button 
-          className="btn-secondary" 
           onClick={() => navigate('/join')}
           disabled={!connected}
         >
-          Spiel beitreten
+          🎮 Spiel beitreten
         </button>
         
         <button 
           className="btn-admin" 
           onClick={() => navigate('/admin')}
         >
-          Admin Panel
+          🔐 Admin Login
         </button>
       </div>
       
@@ -55,6 +47,11 @@ const HomePage: React.FC = () => {
           <h3>🃏 Joker & Risiko</h3>
           <p>Strategische Elemente</p>
         </div>
+      </div>
+      
+      <div className="admin-note">
+        <p>💡 Spiele werden vom Admin erstellt</p>
+        <p>Frage deinen Spielleiter nach dem Spielcode!</p>
       </div>
     </div>
   )

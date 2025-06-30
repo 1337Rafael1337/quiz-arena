@@ -2,10 +2,10 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { useSocket } from './hooks/useSocket'
 import HomePage from './pages/HomePage'
-import CreateGame from './pages/CreateGame'
 import JoinGame from './pages/JoinGame'
 import GameScreen from './pages/GameScreen'
-import AdminPanel from './pages/AdminPanel'
+import AdminLogin from './pages/AdminLogin'
+import AdminDashboard from './pages/admin/AdminDashboard'
 import './App.css'
 
 function App() {
@@ -17,10 +17,11 @@ function App() {
       <div className="app">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/create" element={<CreateGame />} />
           <Route path="/join" element={<JoinGame />} />
           <Route path="/game" element={<GameScreen />} />
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin" element={<AdminLogin />} />
         </Routes>
       </div>
     </Router>
