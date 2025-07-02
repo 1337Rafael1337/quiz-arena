@@ -14,7 +14,13 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     return res.status(401).json({ error: 'Access token required' })
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'secret', (err: any, decoded: any) => {
+  const jwtSecret = process.env.JWT_SECRET
+  if (!jwtSecret) {
+    console.error('CRITICAL: JWT_SECRET environment variable not set!')
+    return res.status(500).json({ error: 'Server configuration error' })
+  }
+  
+  jwt.verify(token, jwtSecret, (err: any, decoded: any) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid token' })
     }

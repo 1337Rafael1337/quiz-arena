@@ -17,8 +17,11 @@ const AdminLogin: React.FC = () => {
 
   const checkSetupStatus = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/auth/setup-status')
-      const data = await response.json()
+      const { API_ENDPOINTS, apiRequest, handleApiResponse } = await import('../config/api')
+      const { handleError, logError } = await import('../utils/errorHandler')
+      
+      const response = await apiRequest(API_ENDPOINTS.AUTH.SETUP_STATUS)
+      const data = await handleApiResponse(response)
       
       if (data.setupRequired) {
         navigate('/setup')
@@ -27,6 +30,9 @@ const AdminLogin: React.FC = () => {
       
       setSetupRequired(false)
     } catch (error) {
+      const { handleError, logError } = await import('../utils/errorHandler')
+      const appError = handleError(error)
+      logError(appError, 'AdminLogin.checkSetupStatus')
       console.error('Error checking setup status:', error)
       setSetupRequired(false)
     }

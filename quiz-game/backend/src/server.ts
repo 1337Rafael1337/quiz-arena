@@ -8,6 +8,7 @@ import path from 'path'
 import { pool } from './database/connection.js'
 import { GameEngine } from './models/GameEngine.js'
 import adminRoutes from './routes/admin.js'
+import { sanitizeInput, isValidEmail, isValidUsername } from './utils/sanitize.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -65,19 +66,43 @@ app.post('/api/auth/setup-admin', async (req, res) => {
       return res.status(400).json({ error: 'Admin already exists. Setup not allowed.' })
     }
     
+    // Sanitize inputs
+    const sanitizedUsername = sanitizeInput(username)
+    const sanitizedEmail = sanitizeInput(email)
+    
     // Validate input
-    if (!username || !email || !password) {
+    if (!sanitizedUsername || !sanitizedEmail || !password) {
       return res.status(400).json({ error: 'Username, email and password are required' })
     }
     
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+    if (!isValidUsername(sanitizedUsername)) {
+      return res.status(400).json({ error: 'Username must be 3-30 characters and contain only letters, numbers, underscores, and hyphens' })
+    }
+    
+    if (!isValidEmail(sanitizedEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' })
+    }
+    
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' })
+    }
+    
+    // Password strength validation
+    const hasUpperCase = /[A-Z]/.test(password)
+    const hasLowerCase = /[a-z]/.test(password)
+    const hasNumbers = /\d/.test(password)
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      return res.status(400).json({ 
+        error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' 
+      })
     }
     
     // Check if username or email already exists
     const existingUser = await pool.query(
       "SELECT id FROM users WHERE username = $1 OR email = $2",
-      [username, email]
+      [sanitizedUsername, sanitizedEmail]
     )
     
     if (existingUser.rows.length > 0) {
@@ -88,13 +113,19 @@ app.post('/api/auth/setup-admin', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10)
     const result = await pool.query(
       "INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role",
-      [username, email, hashedPassword, 'admin']
+      [sanitizedUsername, sanitizedEmail, hashedPassword, 'admin']
     )
     
     const user = result.rows[0]
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) {
+      console.error('CRITICAL: JWT_SECRET environment variable not set!')
+      return res.status(500).json({ error: 'Server configuration error' })
+    }
+    
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      process.env.JWT_SECRET || 'secret',
+      jwtSecret,
       { expiresIn: '24h' }
     )
     
@@ -136,9 +167,15 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
     
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) {
+      console.error('CRITICAL: JWT_SECRET environment variable not set!')
+      return res.status(500).json({ error: 'Server configuration error' })
+    }
+    
     const token = jwt.sign(
       { userId: user.id, role: user.role },
-      process.env.JWT_SECRET || 'secret',
+      jwtSecret,
       { expiresIn: '24h' }
     )
     
@@ -167,7 +204,13 @@ app.post('/api/auth/register', async (req, res) => {
     }
     
     const token = authHeader.split(' ')[1]
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret')
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) {
+      console.error('CRITICAL: JWT_SECRET environment variable not set!')
+      return res.status(500).json({ error: 'Server configuration error' })
+    }
+    
+    const decoded = jwt.verify(token, jwtSecret)
     
     // Only admins can create new users
     if (decoded.role !== 'admin') {
@@ -179,8 +222,20 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Username, email and password are required' })
     }
     
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' })
+    }
+    
+    // Password strength validation
+    const hasUpperCase = /[A-Z]/.test(password)
+    const hasLowerCase = /[a-z]/.test(password)
+    const hasNumbers = /\d/.test(password)
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      return res.status(400).json({ 
+        error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' 
+      })
     }
     
     if (!['admin', 'user'].includes(role)) {

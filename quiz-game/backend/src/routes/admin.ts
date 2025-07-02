@@ -5,6 +5,7 @@ import multer from 'multer'
 import csvParser from 'csv-parser'
 import fs from 'fs'
 import bcrypt from 'bcrypt'
+import { sanitizeInput, sanitizeQuestionText, sanitizeCategoryName } from '../utils/sanitize.js'
 
 const router = express.Router()
 
@@ -47,13 +48,20 @@ router.post('/questions', async (req, res) => {
   try {
     const { categoryId, questionText, points, timeLimit, isRisiko, options } = req.body
     
+    // Sanitize inputs
+    const sanitizedQuestionText = sanitizeQuestionText(questionText)
+    const sanitizedOptions = options?.map(opt => ({
+      ...opt,
+      text: sanitizeInput(opt.text)
+    }))
+    
     // Validate input
-    if (!questionText || !options || options.length < 2) {
+    if (!sanitizedQuestionText || !sanitizedOptions || sanitizedOptions.length < 2) {
       return res.status(400).json({ error: 'Invalid question data' })
     }
     
     // Check if exactly one correct answer
-    const correctAnswers = options.filter(opt => opt.isCorrect)
+    const correctAnswers = sanitizedOptions.filter(opt => opt.isCorrect)
     if (correctAnswers.length !== 1) {
       return res.status(400).json({ error: 'Exactly one correct answer required' })
     }
@@ -65,12 +73,12 @@ router.post('/questions', async (req, res) => {
       INSERT INTO questions (category_id, question_text, points, time_limit, is_risiko)
       VALUES ($1, $2, $3, $4, $5) 
       RETURNING id
-    `, [categoryId, questionText, points || 100, timeLimit || 30, isRisiko || false])
+    `, [categoryId, sanitizedQuestionText, points || 100, timeLimit || 30, isRisiko || false])
     
     const questionId = questionResult.rows[0].id
     
     // Insert options
-    for (const [index, option] of options.entries()) {
+    for (const [index, option] of sanitizedOptions.entries()) {
       await pool.query(`
         INSERT INTO question_options (question_id, option_text, is_correct, sort_order)
         VALUES ($1, $2, $3, $4)
@@ -155,11 +163,19 @@ router.post('/categories', async (req, res) => {
   try {
     const { name, description, color } = req.body
     
+    // Sanitize inputs
+    const sanitizedName = sanitizeCategoryName(name)
+    const sanitizedDescription = sanitizeInput(description || '')
+    
+    if (!sanitizedName) {
+      return res.status(400).json({ error: 'Category name is required' })
+    }
+    
     const result = await pool.query(`
       INSERT INTO question_categories (name, description, color)
       VALUES ($1, $2, $3)
       RETURNING id
-    `, [name, description || '', color || '#3498db'])
+    `, [sanitizedName, sanitizedDescription, color || '#3498db'])
     
     res.json({ id: result.rows[0].id, message: 'Category created successfully' })
   } catch (error) {
@@ -407,8 +423,19 @@ router.post('/users/:id/reset-password', async (req, res) => {
     const { id } = req.params
     const { newPassword } = req.body
     
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' })
+    }
+    
+    // Password strength validation
+    const hasUpperCase = /[A-Z]/.test(newPassword)
+    const hasLowerCase = /[a-z]/.test(newPassword)
+    const hasNumbers = /\d/.test(newPassword)
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+      return res.status(400).json({ 
+        error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' 
+      })
     }
     
     const hashedPassword = await bcrypt.hash(newPassword, 10)
@@ -455,8 +482,6 @@ router.get('/stats', async (req, res) => {
   }
 })
 
-export default router
-
 // Update category
 router.put('/categories/:id', async (req, res) => {
   try {
@@ -498,3 +523,5 @@ router.delete('/categories/:id', async (req, res) => {
     res.status(500).json({ error: error.message })
   }
 })
+
+export default router
