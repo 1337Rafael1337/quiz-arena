@@ -4,6 +4,7 @@ import { authenticateToken, requireAdmin } from '../middleware/auth.js'
 import multer from 'multer'
 import csvParser from 'csv-parser'
 import fs from 'fs'
+import bcrypt from 'bcrypt'
 
 const router = express.Router()
 
@@ -273,7 +274,7 @@ router.get('/games', async (req, res) => {
       SELECT gs.*, u.username as creator_name,
              COUNT(t.id) as team_count
       FROM game_sessions gs
-      LEFT JOIN users u ON gs.created_by = u.id
+      LEFT JOIN users u ON gs.creator_id = u.id
       LEFT JOIN teams t ON gs.id = t.game_session_id
       GROUP BY gs.id, u.username
       ORDER BY gs.created_at DESC
@@ -292,7 +293,7 @@ router.post('/games', async (req, res) => {
     const gameCode = Math.random().toString(36).substring(2, 8).toUpperCase()
     
     const result = await pool.query(`
-      INSERT INTO game_sessions (name, game_code, created_by, max_teams, joker_count, risiko_enabled)
+      INSERT INTO game_sessions (name, game_code, creator_id, max_teams, joker_count, risiko_enabled)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id, game_code
     `, [name, gameCode, req.userId, maxTeams || 4, jokerCount || 3, risikoEnabled || true])
@@ -302,6 +303,118 @@ router.post('/games', async (req, res) => {
       gameCode: result.rows[0].game_code,
       message: 'Game created successfully' 
     })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// USER MANAGEMENT (Admin only)
+
+// Get all users
+router.get('/users', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, username, email, role, is_active, created_at,
+             (SELECT COUNT(*) FROM game_sessions WHERE creator_id = users.id) as games_created
+      FROM users
+      ORDER BY created_at DESC
+    `)
+    
+    res.json(result.rows)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Update user
+router.put('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { username, email, role, is_active } = req.body
+    
+    // Validate input
+    if (!username || !email) {
+      return res.status(400).json({ error: 'Username and email are required' })
+    }
+    
+    if (!['admin', 'user'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' })
+    }
+    
+    // Check if username or email already exists (excluding current user)
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE (username = $1 OR email = $2) AND id != $3",
+      [username, email, id]
+    )
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Username or email already exists' })
+    }
+    
+    // Prevent deactivating the last admin
+    if (role === 'admin' && is_active === false) {
+      const adminCount = await pool.query("SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND is_active = true AND id != $1", [id])
+      if (parseInt(adminCount.rows[0].count) === 0) {
+        return res.status(400).json({ error: 'Cannot deactivate the last admin user' })
+      }
+    }
+    
+    await pool.query(`
+      UPDATE users 
+      SET username = $1, email = $2, role = $3, is_active = $4, updated_at = NOW()
+      WHERE id = $5
+    `, [username, email, role, is_active, id])
+    
+    res.json({ message: 'User updated successfully' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Delete user
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    // Prevent deleting yourself
+    if (parseInt(id) === req.userId) {
+      return res.status(400).json({ error: 'Cannot delete your own account' })
+    }
+    
+    // Check if user is admin and prevent deleting last admin
+    const userCheck = await pool.query("SELECT role FROM users WHERE id = $1", [id])
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    
+    if (userCheck.rows[0].role === 'admin') {
+      const adminCount = await pool.query("SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND id != $1", [id])
+      if (parseInt(adminCount.rows[0].count) === 0) {
+        return res.status(400).json({ error: 'Cannot delete the last admin user' })
+      }
+    }
+    
+    await pool.query('DELETE FROM users WHERE id = $1', [id])
+    res.json({ message: 'User deleted successfully' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Reset user password (Admin only)
+router.post('/users/:id/reset-password', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { newPassword } = req.body
+    
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+    }
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    await pool.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [hashedPassword, id])
+    
+    res.json({ message: 'Password reset successfully' })
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
@@ -317,6 +430,8 @@ router.get('/stats', async (req, res) => {
       pool.query('SELECT COUNT(*) as total_categories FROM question_categories'),
       pool.query('SELECT COUNT(*) as total_games FROM game_sessions'),
       pool.query('SELECT COUNT(*) as active_games FROM game_sessions WHERE status = $1', ['active']),
+      pool.query('SELECT COUNT(*) as total_users FROM users'),
+      pool.query('SELECT COUNT(*) as admin_users FROM users WHERE role = $1', ['admin']),
       pool.query(`
         SELECT c.name, COUNT(q.id) as question_count
         FROM question_categories c
@@ -331,7 +446,9 @@ router.get('/stats', async (req, res) => {
       totalCategories: parseInt(stats[1].rows[0].total_categories),
       totalGames: parseInt(stats[2].rows[0].total_games),
       activeGames: parseInt(stats[3].rows[0].active_games),
-      categoriesStats: stats[4].rows
+      totalUsers: parseInt(stats[4].rows[0].total_users),
+      adminUsers: parseInt(stats[5].rows[0].admin_users),
+      categoriesStats: stats[6].rows
     })
   } catch (error) {
     res.status(500).json({ error: error.message })

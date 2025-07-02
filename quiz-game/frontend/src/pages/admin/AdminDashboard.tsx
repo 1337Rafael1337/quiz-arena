@@ -4,12 +4,15 @@ import QuestionsManager from './QuestionsManager'
 import CategoriesManager from './CategoriesManager'
 import GamesManager from './GamesManager'
 import ImportManager from './ImportManager'
+import UsersManager from './UsersManager'
 
 interface Stats {
   totalQuestions: number
   totalCategories: number
   totalGames: number
   activeGames: number
+  totalUsers: number
+  adminUsers: number
   categoriesStats: Array<{ name: string; question_count: number }>
 }
 
@@ -114,6 +117,12 @@ const AdminDashboard: React.FC = () => {
         >
           📥 Import
         </button>
+        <button 
+          className={`nav-btn ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          👥 Benutzer
+        </button>
       </div>
       
       <div className="admin-content">
@@ -146,6 +155,16 @@ const AdminDashboard: React.FC = () => {
                 <div className="stat-card active">
                   <div className="stat-number">{stats.activeGames}</div>
                   <div className="stat-label">Aktive Spiele</div>
+                </div>
+                
+                <div className="stat-card">
+                  <div className="stat-number">{stats.totalUsers}</div>
+                  <div className="stat-label">Benutzer gesamt</div>
+                </div>
+                
+                <div className="stat-card">
+                  <div className="stat-number">{stats.adminUsers}</div>
+                  <div className="stat-label">Administratoren</div>
                 </div>
               </div>
             )}
@@ -199,6 +218,12 @@ const AdminDashboard: React.FC = () => {
                 >
                   📥 CSV importieren
                 </button>
+                <button 
+                  className="action-btn"
+                  onClick={() => setActiveTab('users')}
+                >
+                  👤 Neuen Benutzer erstellen
+                </button>
               </div>
             </div>
           </div>
@@ -208,6 +233,7 @@ const AdminDashboard: React.FC = () => {
         {activeTab === 'categories' && <CategoriesManager />}
         {activeTab === 'games' && <GamesManager />}
         {activeTab === 'import' && <ImportManager />}
+        {activeTab === 'users' && <UsersManager />}
       </div>
     </div>
   )

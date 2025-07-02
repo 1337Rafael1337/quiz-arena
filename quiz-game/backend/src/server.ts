@@ -39,52 +39,101 @@ const io = new Server(httpServer, {
 
 // AUTH ROUTES
 
-// Admin Login
-app.post('/api/auth/admin-login', async (req, res) => {
+// Check if setup is required
+app.get('/api/auth/setup-status', async (req, res) => {
+  try {
+    const result = await pool.query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+    const adminCount = parseInt(result.rows[0].count)
+    
+    res.json({ 
+      setupRequired: adminCount === 0,
+      hasAdmins: adminCount > 0
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Initial admin setup
+app.post('/api/auth/setup-admin', async (req, res) => {
+  try {
+    const { username, email, password } = req.body
+    
+    // Check if any admin already exists
+    const adminCheck = await pool.query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+    if (parseInt(adminCheck.rows[0].count) > 0) {
+      return res.status(400).json({ error: 'Admin already exists. Setup not allowed.' })
+    }
+    
+    // Validate input
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email and password are required' })
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+    }
+    
+    // Check if username or email already exists
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE username = $1 OR email = $2",
+      [username, email]
+    )
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Username or email already exists' })
+    }
+    
+    // Create admin user
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const result = await pool.query(
+      "INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role",
+      [username, email, hashedPassword, 'admin']
+    )
+    
+    const user = result.rows[0]
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '24h' }
+    )
+    
+    console.log(`🔐 Initial admin created: ${username}`)
+    res.json({ user, token })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Login for all users (admin and regular users)
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body
     
-    // Default admin credentials for first setup
-    if (username === 'admin' && password === 'admin123') {
-      // Check if admin exists in database
-      let result = await pool.query(
-        "SELECT id, username, role FROM users WHERE username = 'admin'"
-      )
-      
-      if (result.rows.length === 0) {
-        // Create default admin
-        const hashedPassword = await bcrypt.hash('admin123', 10)
-        result = await pool.query(
-          "INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, username, role",
-          ['admin', 'admin@quiz-arena.local', hashedPassword, 'admin']
-        )
-      }
-      
-      const user = result.rows[0]
-      const token = jwt.sign(
-        { userId: user.id, role: user.role },
-        process.env.JWT_SECRET || 'secret',
-        { expiresIn: '24h' }
-      )
-      
-      return res.json({ user, token })
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' })
     }
     
-    // Regular database authentication
+    // Get user from database
     const result = await pool.query(
-      "SELECT id, username, password_hash, role FROM users WHERE username = $1 AND role = 'admin'",
+      "SELECT id, username, email, password_hash, role, is_active FROM users WHERE username = $1",
       [username]
     )
     
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid admin credentials' })
+      return res.status(401).json({ error: 'Invalid credentials' })
     }
     
     const user = result.rows[0]
+    
+    if (!user.is_active) {
+      return res.status(401).json({ error: 'Account is deactivated' })
+    }
+    
     const isValidPassword = await bcrypt.compare(password, user.password_hash)
     
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid admin credentials' })
+      return res.status(401).json({ error: 'Invalid credentials' })
     }
     
     const token = jwt.sign(
@@ -94,10 +143,83 @@ app.post('/api/auth/admin-login', async (req, res) => {
     )
     
     res.json({ 
-      user: { id: user.id, username: user.username, role: user.role }, 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        email: user.email,
+        role: user.role 
+      }, 
       token 
     })
   } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Register new user (only admins can create users)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, email, password, role = 'user' } = req.body
+    const authHeader = req.headers.authorization
+    
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization required' })
+    }
+    
+    const token = authHeader.split(' ')[1]
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret')
+    
+    // Only admins can create new users
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can create new users' })
+    }
+    
+    // Validate input
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email and password are required' })
+    }
+    
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+    }
+    
+    if (!['admin', 'user'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' })
+    }
+    
+    // Check if username or email already exists
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE username = $1 OR email = $2",
+      [username, email]
+    )
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Username or email already exists' })
+    }
+    
+    // Create user
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const result = await pool.query(
+      "INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role, created_at",
+      [username, email, hashedPassword, role]
+    )
+    
+    const newUser = result.rows[0]
+    console.log(`👤 New ${role} created: ${username} by admin ${decoded.userId}`)
+    
+    res.json({ 
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
+        created_at: newUser.created_at
+      }
+    })
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' })
+    }
     res.status(500).json({ error: error.message })
   }
 })

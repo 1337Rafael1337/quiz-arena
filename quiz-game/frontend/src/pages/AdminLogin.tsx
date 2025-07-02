@@ -1,15 +1,36 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGameStore } from '../store/gameStore'
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate()
+  const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
   const [credentials, setCredentials] = useState({
     username: '',
     password: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    checkSetupStatus()
+  }, [])
+
+  const checkSetupStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/auth/setup-status')
+      const data = await response.json()
+      
+      if (data.setupRequired) {
+        navigate('/setup')
+        return
+      }
+      
+      setSetupRequired(false)
+    } catch (error) {
+      console.error('Error checking setup status:', error)
+      setSetupRequired(false)
+    }
+  }
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -17,7 +38,7 @@ const AdminLogin: React.FC = () => {
     setError('')
     
     try {
-      const response = await fetch('http://localhost:3001/api/auth/admin-login', {
+      const response = await fetch('http://localhost:3001/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,7 +57,12 @@ const AdminLogin: React.FC = () => {
       localStorage.setItem('adminToken', data.token)
       localStorage.setItem('adminUser', JSON.stringify(data.user))
       
-      navigate('/admin/dashboard')
+      // Redirect based on role
+      if (data.user.role === 'admin') {
+        navigate('/admin/dashboard')
+      } else {
+        navigate('/user/dashboard') // For regular users
+      }
     } catch (error) {
       setError(error.message)
     } finally {
@@ -44,39 +70,50 @@ const AdminLogin: React.FC = () => {
     }
   }
   
+  if (setupRequired === null) {
+    return (
+      <div className="admin-login">
+        <div className="login-container">
+          <div className="loading">Prüfe System-Status...</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="admin-login">
       <div className="login-container">
         <div className="login-header">
           <h1>🎯 Quiz Arena</h1>
-          <h2>Admin Login</h2>
+          <h2>🔐 Anmeldung</h2>
+          <p>Melden Sie sich mit Ihren Zugangsdaten an</p>
         </div>
         
         <form onSubmit={handleLogin} className="login-form">
           {error && (
             <div className="error-banner">
-              {error}
+              ❌ {error}
             </div>
           )}
           
           <div className="form-group">
-            <label>Username</label>
+            <label>Benutzername</label>
             <input
               type="text"
               value={credentials.username}
               onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-              placeholder="admin"
+              placeholder="Ihr Benutzername"
               required
             />
           </div>
           
           <div className="form-group">
-            <label>Password</label>
+            <label>Passwort</label>
             <input
               type="password"
               value={credentials.password}
               onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-              placeholder="Password"
+              placeholder="Ihr Passwort"
               required
             />
           </div>
@@ -86,13 +123,13 @@ const AdminLogin: React.FC = () => {
             className="btn-login"
             disabled={loading}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? '⏳ Anmelden...' : '🚀 Anmelden'}
           </button>
-          
-          <div className="login-hint">
-            <p>Standard Login: <code>admin</code> / <code>admin123</code></p>
-          </div>
         </form>
+        
+        <div className="login-info">
+          <p>💡 <strong>Hinweis:</strong> Sowohl Administratoren als auch normale Benutzer melden sich hier an.</p>
+        </div>
         
         <button 
           className="back-btn"
