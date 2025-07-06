@@ -1,4 +1,4 @@
-import React from 'react'
+// React import not needed with new JSX transform
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { useSocket } from './hooks/useSocket'
 import HomePage from './pages/HomePage'

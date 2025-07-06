@@ -1,6 +1,9 @@
 # Use Bun as base image
 FROM oven/bun:1.1.34-alpine AS base
 
+# Install build dependencies for bcrypt
+RUN apk add --no-cache python3 make g++
+
 # Set working directory
 WORKDIR /app
 

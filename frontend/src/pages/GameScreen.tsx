@@ -90,7 +90,7 @@ const GameScreen: React.FC = () => {
   
   useEffect(() => {
     // Timer countdown
-    let timer: NodeJS.Timeout
+    let timer: number
     if (currentQuestion && timeRemaining > 0 && !showResults) {
       timer = setTimeout(() => {
         updateGameState({ timeRemaining: timeRemaining - 1 })
