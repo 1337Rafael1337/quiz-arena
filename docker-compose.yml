@@ -42,7 +42,7 @@ services:
   # Backend API
   backend:
     build:
-      context: ./backend
+      context: ./quiz-game/backend
       dockerfile: Dockerfile
     container_name: quiz-arena-backend
     restart: unless-stopped
@@ -72,7 +72,7 @@ services:
   # Frontend
   frontend:
     build:
-      context: ./frontend
+      context: ./quiz-game/frontend
       dockerfile: Dockerfile
     container_name: quiz-arena-frontend
     restart: unless-stopped

@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch src/server.ts",
-    "build": "bun build src/server.ts --outdir dist",
+    "build": "bun build src/server.ts --outdir dist --target node",
     "start": "bun dist/server.js",
     "migrate": "bun src/database/migrate.ts",
     "migrate:fix": "bun src/database/migrate.ts",

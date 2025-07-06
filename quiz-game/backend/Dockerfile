@@ -4,10 +4,8 @@ FROM oven/bun:1-alpine
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apk add --no-cache \
-    postgresql-client \
-    curl
+# Skip system dependencies for now (network issues)
+# RUN apk update && apk add --no-cache postgresql-client curl python3 make g++
 
 # Copy package files
 COPY package.json bun.lock* ./
