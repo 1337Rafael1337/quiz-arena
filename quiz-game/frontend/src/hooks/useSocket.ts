@@ -13,7 +13,7 @@ export const useSocket = () => {
       return
     }
     
-    const serverUrl = 'http://localhost:3001'
+    const serverUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
     console.log('🔌 Creating new socket connection to:', serverUrl)
     
     const socket = io(serverUrl)
