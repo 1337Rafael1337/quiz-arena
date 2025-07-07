@@ -16,7 +16,10 @@ export const useSocket = () => {
     const serverUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
     console.log('🔌 Creating new socket connection to:', serverUrl)
     
-    const socket = io(serverUrl)
+    // If using relative path, configure Socket.IO properly
+    const socket = serverUrl.startsWith('/') 
+      ? io({ path: serverUrl })
+      : io(serverUrl)
     socketRef.current = socket
     store.setSocket(socket)
     
