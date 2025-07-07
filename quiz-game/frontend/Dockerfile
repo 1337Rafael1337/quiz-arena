@@ -13,6 +13,12 @@ RUN bun install --frozen-lockfile
 # Copy source code
 COPY . .
 
+# Set build-time environment variables
+ARG VITE_API_URL=/api
+ARG VITE_SOCKET_URL=/socket.io
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
+
 # Build the application
 RUN bun run build
 
