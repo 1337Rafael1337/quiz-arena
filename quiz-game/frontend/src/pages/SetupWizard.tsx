@@ -47,7 +47,7 @@ const SetupWizard: React.FC = () => {
     setLoading(true)
     
     try {
-      const response = await fetch('http://localhost:3001/api/auth/setup-admin', {
+      const response = await fetch('/api/auth/setup-admin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
