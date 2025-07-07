@@ -36,7 +36,7 @@ const UsersManager: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/users', {
+      const response = await fetch('/api/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -66,7 +66,7 @@ const UsersManager: React.FC = () => {
     
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/auth/register', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ const UsersManager: React.FC = () => {
   const handleUpdateUser = async (user: User) => {
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch(`http://localhost:3001/api/admin/users/${user.id}`, {
+      const response = await fetch(`/api/admin/users/${user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +124,7 @@ const UsersManager: React.FC = () => {
     
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch(`http://localhost:3001/api/admin/users/${id}`, {
+      const response = await fetch(`/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -155,7 +155,7 @@ const UsersManager: React.FC = () => {
     
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch(`http://localhost:3001/api/admin/users/${userId}/reset-password`, {
+      const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
