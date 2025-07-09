@@ -7,10 +7,16 @@
     "dev": "bun --watch src/server.ts",
     "build": "bun build src/server.ts --outdir dist --target node",
     "start": "bun dist/server.js",
-    "migrate": "bun src/database/migrate.ts",
-    "migrate:fix": "bun src/database/migrate.ts",
+    "migrate": "bun src/database/migrator.ts migrate",
+    "migrate:status": "bun src/database/migrator.ts status",
+    "migrate:rollback": "bun src/database/migrator.ts rollback",
+    "migrate:legacy": "bun src/database/migrate.ts",
     "seed": "bun src/database/seed.ts",
-    "db:setup": "bun src/database/migrate.ts"
+    "db:setup": "bun run migrate && bun run seed",
+    "db:reset": "bun run db:drop && bun run db:setup",
+    "db:drop": "echo 'Manual database drop required'",
+    "deploy:prepare": "bun run build && bun run migrate",
+    "deploy:production": "bun run migrate && bun run start"
   },
   "dependencies": {
     "@types/multer": "^1.4.13",

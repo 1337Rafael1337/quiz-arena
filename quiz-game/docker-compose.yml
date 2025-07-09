@@ -13,7 +13,10 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/src/database:/docker-entrypoint-initdb.d
+      # Automatische SQL-Ausführung nur beim ERSTEN Start (wenn DB leer ist)
+      - ./backend/src/database/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/src/database/02-indexes.sql:/docker-entrypoint-initdb.d/02-indexes.sql:ro
+      - ./backend/src/database/03-add-ownership-and-permissions.sql:/docker-entrypoint-initdb.d/03-permissions.sql:ro
     ports:
       - "5432:5432"
     healthcheck:

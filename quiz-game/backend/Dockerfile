@@ -1,30 +1,51 @@
-# Backend Dockerfile for Quiz Arena
-FROM oven/bun:1-alpine
+# Backend Dockerfile for Quiz Arena - Production Ready
+FROM oven/bun:1-alpine AS base
 
-# Set working directory
+# Install system dependencies
+RUN apk update && apk add --no-cache \
+    wget \
+    curl \
+    postgresql-client \
+    && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
-# Skip system dependencies for now (network issues)
-# RUN apk update && apk add --no-cache postgresql-client curl python3 make g++
-
-# Copy package files
-COPY package.json bun.lock* ./
-
 # Install dependencies
+FROM base AS deps
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile --production
+
+# Build stage
+FROM base AS build
+COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile
-
-# Copy source code
 COPY . .
+RUN bun run build
 
-# Create uploads directory
-RUN mkdir -p uploads
+# Production stage
+FROM base AS production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/src ./src
+COPY package.json ./
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S quizapp -u 1001
+
+# Create uploads directory with proper permissions
+RUN mkdir -p uploads && \
+    chown -R quizapp:nodejs /app && \
+    chmod -R 755 /app
+
+USER quizapp
 
 # Expose port
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/health || exit 1
 
-# Default command (can be overridden in docker-compose)
-CMD ["bun", "run", "dev"]
+# Start application
+CMD ["bun", "run", "start"]

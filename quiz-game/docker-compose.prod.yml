@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: quizdb
+      POSTGRES_USER: quizuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-quizpass123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quizuser -d quizdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: quizdb
+      DB_USER: quizuser
+      DB_PASSWORD: ${DB_PASSWORD:-quizpass123}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 10 &&
+        echo 'Running migrations...' &&
+        bun run migrate &&
+        echo 'Starting application...' &&
+        bun run start
+      "
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: ${API_URL:-http://localhost:3001}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Optional: Redis for session management and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  redis_data:
