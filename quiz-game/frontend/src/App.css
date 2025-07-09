@@ -2495,3 +2495,453 @@ body {
     gap: 0.5rem;
   }
 }
+
+/* User Dashboard Tabs */
+.user-dashboard .dashboard-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-dashboard .tab-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.user-dashboard .tab-btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.user-dashboard .tab-btn.active {
+  color: white;
+  border-bottom-color: #4caf50;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.user-dashboard .tab-content {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  backdrop-filter: blur(10px);
+}
+
+/* User Questions Manager */
+.user-questions-manager .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.user-questions-manager .filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.user-questions-manager .filters select,
+.user-questions-manager .filters input {
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  min-width: 150px;
+}
+
+.user-questions-manager .questions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.user-questions-manager .question-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-questions-manager .question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.user-questions-manager .category {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.user-questions-manager .access-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.user-questions-manager .access-badge.owner {
+  background: #ff9800;
+  color: white;
+}
+
+.user-questions-manager .access-badge.write {
+  background: #4caf50;
+  color: white;
+}
+
+.user-questions-manager .access-badge.read {
+  background: #2196f3;
+  color: white;
+}
+
+.user-questions-manager .access-badge.admin {
+  background: #9c27b0;
+  color: white;
+}
+
+.user-questions-manager .question-content h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.user-questions-manager .question-meta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.user-questions-manager .question-options {
+  margin-bottom: 1rem;
+}
+
+.user-questions-manager .option {
+  padding: 0.5rem;
+  margin: 0.3rem 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+}
+
+.user-questions-manager .option.correct {
+  background: rgba(76, 175, 80, 0.3);
+  border-left: 3px solid #4caf50;
+}
+
+.user-questions-manager .question-creator {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-bottom: 1rem;
+}
+
+.user-questions-manager .question-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.user-questions-manager .btn-edit,
+.user-questions-manager .btn-delete {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+}
+
+.user-questions-manager .btn-edit {
+  background: #2196f3;
+  color: white;
+}
+
+.user-questions-manager .btn-edit:hover {
+  background: #1976d2;
+}
+
+.user-questions-manager .btn-delete {
+  background: #f44336;
+  color: white;
+}
+
+.user-questions-manager .btn-delete:hover {
+  background: #d32f2f;
+}
+
+.user-questions-manager .no-questions {
+  text-align: center;
+  padding: 3rem;
+  opacity: 0.7;
+}
+
+/* User Games Manager */
+.user-games-manager .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.user-games-manager .filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.user-games-manager .filters select,
+.user-games-manager .filters input {
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  min-width: 150px;
+}
+
+.user-games-manager .games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.user-games-manager .game-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-games-manager .game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.user-games-manager .game-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.user-games-manager .game-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.user-games-manager .status-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.user-games-manager .status-badge.waiting {
+  background: #ff9800;
+  color: white;
+}
+
+.user-games-manager .status-badge.active {
+  background: #4caf50;
+  color: white;
+}
+
+.user-games-manager .status-badge.completed {
+  background: #9e9e9e;
+  color: white;
+}
+
+.user-games-manager .status-badge.paused {
+  background: #f44336;
+  color: white;
+}
+
+.user-games-manager .game-code {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+}
+
+.user-games-manager .copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.user-games-manager .copy-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.user-games-manager .game-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.user-games-manager .meta-item {
+  opacity: 0.8;
+}
+
+.user-games-manager .game-creator,
+.user-games-manager .game-date {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
+}
+
+.user-games-manager .game-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.user-games-manager .no-games {
+  text-align: center;
+  padding: 3rem;
+  opacity: 0.7;
+}
+
+/* Modal Styles for User Components */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 1rem;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: white;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background 0.3s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.question-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.question-form .options-section {
+  margin: 1.5rem 0;
+}
+
+.question-form .options-section h4 {
+  margin: 0 0 1rem 0;
+  color: white;
+}
+
+.question-form .option-input {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.question-form .option-input input[type="text"] {
+  flex: 1;
+}
+
+.question-form .option-input .checkbox-label {
+  white-space: nowrap;
+}
+
+/* Responsive for User Components */
+@media (max-width: 768px) {
+  .user-questions-manager .questions-grid,
+  .user-games-manager .games-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .user-questions-manager .filters,
+  .user-games-manager .filters {
+    flex-direction: column;
+  }
+  
+  .user-questions-manager .filters select,
+  .user-questions-manager .filters input,
+  .user-games-manager .filters select,
+  .user-games-manager .filters input {
+    width: 100%;
+  }
+  
+  .question-form .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .user-dashboard .dashboard-tabs {
+    flex-direction: column;
+  }
+  
+  .user-dashboard .tab-btn {
+    text-align: left;
+  }
+}

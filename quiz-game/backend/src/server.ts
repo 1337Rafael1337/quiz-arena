@@ -8,6 +8,7 @@ import path from 'path'
 import { pool } from './database/connection.js'
 import { GameEngine } from './models/GameEngine.js'
 import adminRoutes from './routes/admin.js'
+import userRoutes from './routes/user.js'
 import { sanitizeInput, isValidEmail, isValidUsername } from './utils/sanitize.js'
 
 const app = express()
@@ -290,6 +291,9 @@ app.get('/api/health', (req, res) => {
 
 // Admin routes
 app.use('/api/admin', adminRoutes)
+
+// User routes
+app.use('/api/user', userRoutes)
 
 // Public routes (limited)
 app.get('/api/games/public', (req, res) => {

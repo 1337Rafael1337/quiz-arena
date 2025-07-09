@@ -18,12 +18,13 @@ router.use(requireAdmin)
 
 // QUESTIONS MANAGEMENT
 
-// Get all questions with categories
+// Get all questions with categories (Admin sees all questions)
 router.get('/questions', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT q.id, q.question_text, q.points, q.time_limit, q.is_risiko, q.created_at,
              c.name as category_name, c.id as category_id,
+             u.username as creator_name, q.creator_id,
              array_agg(json_build_object(
                'id', qo.id, 
                'text', qo.option_text, 
@@ -32,8 +33,9 @@ router.get('/questions', async (req, res) => {
              ) ORDER BY qo.sort_order) as options
       FROM questions q
       JOIN question_categories c ON q.category_id = c.id
+      LEFT JOIN users u ON q.creator_id = u.id
       LEFT JOIN question_options qo ON q.id = qo.question_id
-      GROUP BY q.id, c.name, c.id
+      GROUP BY q.id, c.name, c.id, u.username, q.creator_id
       ORDER BY c.name, q.points
     `)
     
@@ -68,12 +70,12 @@ router.post('/questions', async (req, res) => {
     
     await pool.query('BEGIN')
     
-    // Insert question
+    // Insert question with creator_id
     const questionResult = await pool.query(`
-      INSERT INTO questions (category_id, question_text, points, time_limit, is_risiko)
-      VALUES ($1, $2, $3, $4, $5) 
+      INSERT INTO questions (category_id, question_text, points, time_limit, is_risiko, creator_id)
+      VALUES ($1, $2, $3, $4, $5, $6) 
       RETURNING id
-    `, [categoryId, sanitizedQuestionText, points || 100, timeLimit || 30, isRisiko || false])
+    `, [categoryId, sanitizedQuestionText, points || 100, timeLimit || 30, isRisiko || false, req.userId])
     
     const questionId = questionResult.rows[0].id
     
@@ -519,6 +521,152 @@ router.delete('/categories/:id', async (req, res) => {
     
     await pool.query('DELETE FROM question_categories WHERE id = $1', [id])
     res.json({ message: 'Category deleted successfully' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// PERMISSION MANAGEMENT (Admin only)
+
+// Grant question permission to user
+router.post('/questions/:id/grant-permission', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { userId, permissionType = 'read' } = req.body
+    
+    if (!['read', 'write'].includes(permissionType)) {
+      return res.status(400).json({ error: 'Invalid permission type' })
+    }
+    
+    // Check if question exists
+    const questionCheck = await pool.query('SELECT id FROM questions WHERE id = $1', [id])
+    if (questionCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Question not found' })
+    }
+    
+    // Check if user exists
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId])
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    
+    // Insert or update permission
+    await pool.query(`
+      INSERT INTO question_permissions (question_id, user_id, granted_by, permission_type)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (question_id, user_id) 
+      DO UPDATE SET permission_type = $4, granted_by = $3
+    `, [id, userId, req.userId, permissionType])
+    
+    res.json({ message: 'Permission granted successfully' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Revoke question permission from user
+router.delete('/questions/:id/revoke-permission/:userId', async (req, res) => {
+  try {
+    const { id, userId } = req.params
+    
+    await pool.query(
+      'DELETE FROM question_permissions WHERE question_id = $1 AND user_id = $2',
+      [id, userId]
+    )
+    
+    res.json({ message: 'Permission revoked successfully' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Grant game permission to user
+router.post('/games/:id/grant-permission', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { userId, permissionType = 'read' } = req.body
+    
+    if (!['read', 'write'].includes(permissionType)) {
+      return res.status(400).json({ error: 'Invalid permission type' })
+    }
+    
+    // Check if game exists
+    const gameCheck = await pool.query('SELECT id FROM game_sessions WHERE id = $1', [id])
+    if (gameCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Game not found' })
+    }
+    
+    // Check if user exists
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId])
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    
+    // Insert or update permission
+    await pool.query(`
+      INSERT INTO game_permissions (game_id, user_id, granted_by, permission_type)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (game_id, user_id) 
+      DO UPDATE SET permission_type = $4, granted_by = $3
+    `, [id, userId, req.userId, permissionType])
+    
+    res.json({ message: 'Permission granted successfully' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Revoke game permission from user
+router.delete('/games/:id/revoke-permission/:userId', async (req, res) => {
+  try {
+    const { id, userId } = req.params
+    
+    await pool.query(
+      'DELETE FROM game_permissions WHERE game_id = $1 AND user_id = $2',
+      [id, userId]
+    )
+    
+    res.json({ message: 'Permission revoked successfully' })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get question permissions
+router.get('/questions/:id/permissions', async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const result = await pool.query(`
+      SELECT qp.*, u.username, u.email, admin.username as granted_by_name
+      FROM question_permissions qp
+      JOIN users u ON qp.user_id = u.id
+      LEFT JOIN users admin ON qp.granted_by = admin.id
+      WHERE qp.question_id = $1
+      ORDER BY u.username
+    `, [id])
+    
+    res.json(result.rows)
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get game permissions
+router.get('/games/:id/permissions', async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const result = await pool.query(`
+      SELECT gp.*, u.username, u.email, admin.username as granted_by_name
+      FROM game_permissions gp
+      JOIN users u ON gp.user_id = u.id
+      LEFT JOIN users admin ON gp.granted_by = admin.id
+      WHERE gp.game_id = $1
+      ORDER BY u.username
+    `, [id])
+    
+    res.json(result.rows)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }

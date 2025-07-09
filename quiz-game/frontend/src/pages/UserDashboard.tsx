@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import UserQuestionsManager from './UserQuestionsManager'
+import UserGamesManager from './UserGamesManager'
 
 interface UserInfo {
   id: number
@@ -8,9 +10,11 @@ interface UserInfo {
   created_at: string
 }
 
-interface GameStats {
-  totalGames: number
-  activeGames: number
+interface UserStats {
+  ownQuestions: number
+  accessibleQuestions: number
+  ownGames: number
+  accessibleGames: number
   recentGames: Array<{
     id: number
     name: string
@@ -22,9 +26,10 @@ interface GameStats {
 const UserDashboard: React.FC = () => {
   const navigate = useNavigate()
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
-  const [gameStats, setGameStats] = useState<GameStats | null>(null)
+  const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     checkAuth()
@@ -53,8 +58,8 @@ const UserDashboard: React.FC = () => {
     try {
       const token = localStorage.getItem('adminToken')
       
-      // Load game statistics
-      const response = await fetch('/api/admin/stats', {
+      // Load user statistics from user endpoint
+      const response = await fetch('/api/user/stats', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -66,9 +71,11 @@ const UserDashboard: React.FC = () => {
       }
       
       const data = await response.json()
-      setGameStats({
-        totalGames: data.totalGames || 0,
-        activeGames: data.activeGames || 0,
+      setUserStats({
+        ownQuestions: data.ownQuestions || 0,
+        accessibleQuestions: data.accessibleQuestions || 0,
+        ownGames: data.ownGames || 0,
+        accessibleGames: data.accessibleGames || 0,
         recentGames: data.recentGames || []
       })
     } catch (error) {
@@ -118,31 +125,76 @@ const UserDashboard: React.FC = () => {
           </div>
         )}
 
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">🎮</div>
-            <div className="stat-content">
-              <h3>Verfügbare Spiele</h3>
-              <div className="stat-number">{gameStats?.totalGames || 0}</div>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon">⚡</div>
-            <div className="stat-content">
-              <h3>Aktive Spiele</h3>
-              <div className="stat-number">{gameStats?.activeGames || 0}</div>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon">👤</div>
-            <div className="stat-content">
-              <h3>Benutzerrolle</h3>
-              <div className="stat-text">{userInfo?.role || 'Benutzer'}</div>
-            </div>
-          </div>
+        <div className="dashboard-tabs">
+          <button 
+            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            📊 Übersicht
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'questions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('questions')}
+          >
+            ❓ Meine Fragen
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'games' ? 'active' : ''}`}
+            onClick={() => setActiveTab('games')}
+          >
+            🎮 Meine Spiele
+          </button>
         </div>
+
+        {activeTab === 'overview' && (
+          <>
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon">❓</div>
+                <div className="stat-content">
+                  <h3>Eigene Fragen</h3>
+                  <div className="stat-number">{userStats?.ownQuestions || 0}</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">📚</div>
+                <div className="stat-content">
+                  <h3>Verfügbare Fragen</h3>
+                  <div className="stat-number">{userStats?.accessibleQuestions || 0}</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">🎮</div>
+                <div className="stat-content">
+                  <h3>Eigene Spiele</h3>
+                  <div className="stat-number">{userStats?.ownGames || 0}</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">🎯</div>
+                <div className="stat-content">
+                  <h3>Verfügbare Spiele</h3>
+                  <div className="stat-number">{userStats?.accessibleGames || 0}</div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'questions' && (
+          <div className="tab-content">
+            <UserQuestionsManager />
+          </div>
+        )}
+
+        {activeTab === 'games' && (
+          <div className="tab-content">
+            <UserGamesManager />
+          </div>
+        )}
 
         <div className="action-section">
           <h2>🎯 Aktionen</h2>
