@@ -238,10 +238,20 @@ const QuestionsManager: React.FC = () => {
         <button 
           className="btn-add"
           onClick={() => setShowForm(true)}
+          disabled={categories.length === 0}
+          title={categories.length === 0 ? "Erstellen Sie zuerst Kategorien" : "Neue Frage erstellen"}
         >
           ➕ Neue Frage
         </button>
       </div>
+
+      {categories.length === 0 && (
+        <div className="warning-banner">
+          <h3>⚠️ Keine Kategorien vorhanden</h3>
+          <p>Sie müssen zuerst Kategorien erstellen, bevor Sie Fragen hinzufügen können.</p>
+          <p><strong>Tipp:</strong> Wechseln Sie zum Tab "Kategorien" und erstellen Sie Ihre erste Kategorie.</p>
+        </div>
+      )}
       
       {/* Filters */}
       <div className="filters">

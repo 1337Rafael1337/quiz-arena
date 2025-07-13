@@ -9,25 +9,33 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:30
 export const API_ENDPOINTS = {
   // Auth
   AUTH: {
-    SETUP_STATUS: `${API_BASE_URL}/api/auth/setup-status`,
-    SETUP_ADMIN: `${API_BASE_URL}/api/auth/setup-admin`,
-    LOGIN: `${API_BASE_URL}/api/auth/login`,
-    REGISTER: `${API_BASE_URL}/api/auth/register`,
+    SETUP_STATUS: `/api/auth/setup-status`,
+    SETUP_ADMIN: `/api/auth/setup-admin`,
+    LOGIN: `/api/auth/login`,
+    REGISTER: `/api/auth/register`,
   },
   
   // Admin
   ADMIN: {
-    STATS: `${API_BASE_URL}/api/admin/stats`,
-    QUESTIONS: `${API_BASE_URL}/api/admin/questions`,
-    CATEGORIES: `${API_BASE_URL}/api/admin/categories`,
-    GAMES: `${API_BASE_URL}/api/admin/games`,
-    USERS: `${API_BASE_URL}/api/admin/users`,
-    IMPORT_CSV: `${API_BASE_URL}/api/admin/import-csv`,
+    STATS: `/api/admin/stats`,
+    QUESTIONS: `/api/admin/questions`,
+    CATEGORIES: `/api/admin/categories`,
+    GAMES: `/api/admin/games`,
+    USERS: `/api/admin/users`,
+    IMPORT_CSV: `/api/admin/import-csv`,
+  },
+  
+  // User
+  USER: {
+    STATS: `/api/user/stats`,
+    QUESTIONS: `/api/user/questions`,
+    CATEGORIES: `/api/user/categories`,
+    GAMES: `/api/user/games`,
   },
   
   // Public
-  HEALTH: `${API_BASE_URL}/api/health`,
-  GAMES_PUBLIC: `${API_BASE_URL}/api/games/public`,
+  HEALTH: `/api/health`,
+  GAMES_PUBLIC: `/api/games/public`,
 } as const
 
 /**
@@ -67,6 +75,9 @@ export async function apiRequest(
     ...getAuthHeaders(),
   }
   
+  // Build full URL if it's a relative path
+  const fullUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : url
+  
   const config: RequestInit = {
     ...options,
     headers: {
@@ -76,10 +87,32 @@ export async function apiRequest(
   }
   
   try {
-    const response = await fetch(url, config)
+    const response = await fetch(fullUrl, config)
     return response
   } catch (error) {
     console.error('API Request failed:', error)
     throw new Error('Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung.')
   }
+}
+
+/**
+ * Handle API response with proper error handling
+ */
+export async function handleApiResponse(response: Response): Promise<any> {
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+    
+    try {
+      const errorData = JSON.parse(errorText)
+      errorMessage = errorData.error || errorMessage
+    } catch {
+      // If not JSON, use the text as error message
+      errorMessage = errorText || errorMessage
+    }
+    
+    throw new Error(errorMessage)
+  }
+  
+  return response.json()
 }

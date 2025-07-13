@@ -147,6 +147,15 @@ const CategoriesManager: React.FC = () => {
           ➕ Neue Kategorie
         </button>
       </div>
+
+      {categories.length === 0 && (
+        <div className="info-banner">
+          <h3>🎯 Willkommen!</h3>
+          <p>Erstellen Sie Ihre erste Kategorie, um mit dem Hinzufügen von Fragen zu beginnen.</p>
+          <p><strong>Beispiele:</strong> Geographie, Geschichte, Sport, Wissenschaft, Unterhaltung</p>
+          <p><strong>Tipp:</strong> Wählen Sie eine passende Farbe für jede Kategorie zur besseren Übersicht.</p>
+        </div>
+      )}
       
       {/* Category Form */}
       {showForm && (
