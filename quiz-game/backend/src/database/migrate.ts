@@ -36,7 +36,7 @@ async function runMigration() {
     
     if (parseInt(userCount.rows[0].count) === 0) {
       console.log('\n⚠️  No users found. You may need to run the setup wizard first.')
-      console.log('   Go to http://localhost:5173/setup to create the first admin user.')
+      console.log('   Go to http://localhost:5173 and you\'ll be redirected to /setup automatically.')
     }
     
   } catch (error) {

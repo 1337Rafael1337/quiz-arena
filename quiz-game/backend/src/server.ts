@@ -374,5 +374,5 @@ io.on('connection', (socket) => {
 httpServer.listen(PORT, () => {
   console.log(`🚀 Quiz Arena Server running on port ${PORT}`)
   console.log(`📊 Frontend URL: ${CLIENT_URL}`)
-  console.log(`🔐 Admin login: admin / admin123`)
+  console.log(`🔐 First time? Go to ${CLIENT_URL}/setup to create your admin user`)
 })

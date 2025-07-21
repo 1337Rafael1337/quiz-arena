@@ -51,7 +51,7 @@ cd backend && bun run dev
 cd frontend && bun start
 ```
 
-Öffne http://localhost:3000
+Öffne http://localhost:3000 - beim ersten Start wirst du automatisch zum Setup-Wizard weitergeleitet
 
 ## 🎮 Wie spielen?
 
@@ -81,12 +81,14 @@ quiz-arena/
 ## 🐳 Docker
 
 ```bash
-# Einfacher Start
-docker-compose up
+# Development (mit Hot-Reload)
+cd quiz-game && ./start-dev.sh
 
 # Production
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 ```
+
+**Erstes Setup:** Öffne http://localhost:3000 oder http://localhost:5173 - du wirst automatisch zum Setup-Wizard weitergeleitet, wenn noch kein Admin-User existiert.
 
 ## 🤝 Contributing
 

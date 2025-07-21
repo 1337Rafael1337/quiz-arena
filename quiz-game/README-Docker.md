@@ -29,9 +29,10 @@
 
 2. **Open the frontend**
    - Go to http://localhost:5173
-   - You'll be redirected to the setup wizard
+   - If no admin user exists, you'll be automatically redirected to the setup wizard
 
 3. **Create first admin user**
+   - The app will automatically redirect you to `/setup` if no admin exists
    - Username: your choice (3-30 chars, letters/numbers/underscore/hyphen)
    - Email: valid email format
    - Password: min 8 chars, uppercase, lowercase, number
