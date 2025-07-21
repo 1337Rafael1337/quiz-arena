@@ -334,10 +334,34 @@ io.on('connection', (socket) => {
   socket.on('join_game', async (data) => {
     try {
       const { gameCode, teamName, teamColor } = data
-      const game = gameEngine.getGame(gameCode)
+      
+      // First check if game exists in GameEngine (in-memory)
+      let game = gameEngine.getGame(gameCode)
+      
+      // If not in memory, check database and load it
+      if (!game) {
+        const dbResult = await pool.query(
+          'SELECT id, name, game_code, status, max_teams, joker_count, risiko_enabled FROM game_sessions WHERE game_code = $1 AND status IN ($2, $3)',
+          [gameCode, 'waiting', 'active']
+        )
+        
+        if (dbResult.rows.length === 0) {
+          socket.emit('error', { message: 'Spiel nicht gefunden oder bereits beendet.' })
+          return
+        }
+        
+        const dbGame = dbResult.rows[0]
+        // Load game from database into GameEngine
+        gameEngine.createGameFromDB(dbGame.game_code, dbGame.name, {
+          maxTeams: dbGame.max_teams,
+          jokerCount: dbGame.joker_count,
+          risikoEnabled: dbGame.risiko_enabled
+        })
+        game = gameEngine.getGame(gameCode)
+      }
       
       if (!game) {
-        socket.emit('error', { message: 'Spiel nicht gefunden. Spiel muss vom Admin erstellt werden.' })
+        socket.emit('error', { message: 'Fehler beim Laden des Spiels.' })
         return
       }
       

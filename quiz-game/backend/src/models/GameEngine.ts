@@ -60,6 +60,28 @@ export class GameEngine {
     return gameCode
   }
   
+  createGameFromDB(gameCode: string, gameName: string, settings: any): void {
+    const game: GameState = {
+      gameCode,
+      name: gameName,
+      teams: new Map(),
+      status: 'waiting',
+      currentQuestion: null,
+      questionGrid: this.initializeQuestionGrid(),
+      maxTeams: settings.maxTeams || 4,
+      jokerCount: settings.jokerCount || 3,
+      risikoEnabled: settings.risikoEnabled || true,
+      activeJokers: {
+        doublePoints: false,
+        extraTime: false,
+        fiftyFifty: false
+      }
+    }
+    
+    this.games.set(gameCode, game)
+    console.log(`🎮 Game loaded from DB: ${gameCode} - ${gameName}`)
+  }
+  
   getGame(gameCode: string): GameState | undefined {
     return this.games.get(gameCode)
   }
