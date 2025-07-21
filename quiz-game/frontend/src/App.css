@@ -1803,9 +1803,10 @@ body {
   gap: 1rem;
   align-items: center;
   margin-bottom: 0.8rem;
-  background: #f9f9f9;
+  background: rgba(255, 255, 255, 0.1);
   padding: 0.8rem;
   border-radius: 6px;
+  border: 1px solid #555;
 }
 
 .option-letter {
@@ -1833,11 +1834,26 @@ body {
   gap: 0.5rem;
   white-space: nowrap;
   cursor: pointer;
+  background: rgba(76, 175, 80, 0.1);
+  padding: 0.5rem 0.8rem;
+  border-radius: 4px;
+  border: 1px solid #4caf50;
+  transition: all 0.2s ease;
+}
+
+.radio-label:hover {
+  background: rgba(76, 175, 80, 0.2);
+}
+
+.radio-label input[type="radio"] {
+  margin: 0;
+  width: auto;
 }
 
 .radio-text {
   font-weight: 500;
   color: #4caf50;
+  font-size: 0.9rem;
 }
 
 /* Enhanced Question Items */
