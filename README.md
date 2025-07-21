@@ -90,6 +90,24 @@ docker-compose up -d
 
 **Erstes Setup:** Öffne http://localhost:3000 oder http://localhost:5173 - du wirst automatisch zum Setup-Wizard weitergeleitet, wenn noch kein Admin-User existiert.
 
+## 🌐 Netzwerk-Zugriff
+
+**Lokaler Zugriff:**
+- http://localhost:3000 (Production)
+- http://localhost:5173 (Development)
+
+**Netzwerk-Zugriff (andere Geräte):**
+- http://YOUR_IP:3000 (z.B. http://192.168.1.100:3000)
+- CORS wird automatisch für gängige IP-Bereiche konfiguriert
+
+## 🔧 Troubleshooting
+
+Bei Problemen siehe [TROUBLESHOOTING.md](TROUBLESHOOTING.md) für häufige Lösungen:
+- Spiel-Beitritt-Probleme
+- API-Verbindungsfehler  
+- CORS-Probleme
+- Setup-Wizard-Issues
+
 ## 🤝 Contributing
 
 1. Fork das Repo
