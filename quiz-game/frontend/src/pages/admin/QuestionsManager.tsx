@@ -54,7 +54,7 @@ const QuestionsManager: React.FC = () => {
   const fetchQuestions = async () => {
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/questions', {
+      const response = await fetch('/api/admin/questions', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -73,7 +73,7 @@ const QuestionsManager: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/categories', {
+      const response = await fetch('/api/admin/categories', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -114,8 +114,8 @@ const QuestionsManager: React.FC = () => {
       const token = localStorage.getItem('adminToken')
       const method = editingQuestion ? 'PUT' : 'POST'
       const url = editingQuestion 
-        ? `http://localhost:3001/api/admin/questions/${editingQuestion.id}`
-        : 'http://localhost:3001/api/admin/questions'
+        ? `/api/admin/questions/${editingQuestion.id}`
+        : '/api/admin/questions'
       
       const response = await fetch(url, {
         method,
@@ -168,7 +168,7 @@ const QuestionsManager: React.FC = () => {
     
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch(`http://localhost:3001/api/admin/questions/${id}`, {
+      const response = await fetch(`/api/admin/questions/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })

@@ -32,7 +32,7 @@ const GamesManager: React.FC = () => {
   const fetchGames = async () => {
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/games', {
+      const response = await fetch('/api/admin/games', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -57,7 +57,7 @@ const GamesManager: React.FC = () => {
     
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/games', {
+      const response = await fetch('/api/admin/games', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

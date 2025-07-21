@@ -25,7 +25,7 @@ const ImportManager: React.FC = () => {
       formData.append('csvFile', file)
       
       const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/import-csv', {
+      const response = await fetch('/api/admin/import-csv', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { buildApiUrl, API_ENDPOINTS, getAuthHeaders } from '../../config/api'
 
 interface Category {
   id: number
@@ -38,8 +39,8 @@ const CategoriesManager: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/categories', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(buildApiUrl(API_ENDPOINTS.ADMIN.CATEGORIES), {
+        headers: getAuthHeaders()
       })
       
       if (response.ok) {
@@ -65,8 +66,8 @@ const CategoriesManager: React.FC = () => {
       const token = localStorage.getItem('adminToken')
       const method = editingCategory ? 'PUT' : 'POST'
       const url = editingCategory 
-        ? `http://localhost:3001/api/admin/categories/${editingCategory.id}`
-        : 'http://localhost:3001/api/admin/categories'
+        ? buildApiUrl(`${API_ENDPOINTS.ADMIN.CATEGORIES}/${editingCategory.id}`)
+        : buildApiUrl(API_ENDPOINTS.ADMIN.CATEGORIES)
       
       const response = await fetch(url, {
         method,
@@ -110,9 +111,9 @@ const CategoriesManager: React.FC = () => {
     
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch(`http://localhost:3001/api/admin/categories/${id}`, {
+      const response = await fetch(buildApiUrl(`${API_ENDPOINTS.ADMIN.CATEGORIES}/${id}`), {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: getAuthHeaders()
       })
       
       if (response.ok) {

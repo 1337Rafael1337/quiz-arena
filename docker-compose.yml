@@ -58,7 +58,7 @@ services:
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       PORT: 3001
       CLIENT_URL: http://localhost:3000
-      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://172.24.229.128:3000
     # Kein externes Port-Mapping - nur intern über nginx erreichbar
     expose:
       - "3001"
