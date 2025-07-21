@@ -16,10 +16,27 @@ const httpServer = createServer(app)
 
 // Load environment variables
 const PORT = process.env.PORT || 3001
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000'
 
 // Middleware
-app.use(cors({ origin: CLIENT_URL }))
+// Parse allowed origins from environment variable or use defaults
+const getAllowedOrigins = () => {
+  const envOrigins = process.env.ALLOWED_ORIGINS
+  if (envOrigins) {
+    return envOrigins.split(',').map(origin => origin.trim())
+  }
+  
+  // Default origins for development
+  return [CLIENT_URL]
+}
+
+const allowedOrigins = getAllowedOrigins()
+console.log('🌐 Allowed CORS origins:', allowedOrigins)
+
+app.use(cors({ 
+  origin: allowedOrigins,
+  credentials: true 
+}))
 app.use(express.json())
 
 // Create uploads directory
@@ -34,8 +51,9 @@ const gameEngine = new GameEngine()
 // Socket.IO setup
 const io = new Server(httpServer, {
   cors: {
-    origin: CLIENT_URL,
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
   }
 })
 

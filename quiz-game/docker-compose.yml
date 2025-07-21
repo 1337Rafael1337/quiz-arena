@@ -48,7 +48,7 @@ services:
     container_name: quiz-arena-backend
     restart: unless-stopped
     environment:
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 3001
       DB_HOST: postgres
       DB_PORT: 5432
@@ -57,8 +57,9 @@ services:
       DB_PASSWORD: quiz_password_123
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: super_secret_quiz_key_development_only_change_in_production
-      CLIENT_URL: http://localhost:5173
+      JWT_SECRET: ${JWT_SECRET:-super_secret_quiz_key_development_only_change_in_production}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     ports:
       - "3001:3001"
     depends_on:

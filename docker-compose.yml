@@ -39,7 +39,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API
+  # Backend API (nur intern erreichbar)
   backend:
     build:
       context: ./quiz-game/backend
@@ -57,8 +57,11 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       PORT: 3001
-    ports:
-      - "3001:3001"
+      CLIENT_URL: http://localhost:3000
+      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    # Kein externes Port-Mapping - nur intern über nginx erreichbar
+    expose:
+      - "3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,10 +69,8 @@ services:
         condition: service_healthy
     networks:
       - quiz-arena-network
-    volumes:
-      - ./backend/logs:/app/logs
 
-  # Frontend
+  # Frontend mit nginx reverse proxy
   frontend:
     build:
       context: ./quiz-game/frontend

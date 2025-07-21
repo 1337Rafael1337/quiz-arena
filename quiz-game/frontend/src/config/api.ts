@@ -3,39 +3,39 @@
  */
 
 // Get API base URL from environment or use default
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-// API endpoints
+// API endpoints (ohne /api prefix, da das über VITE_API_URL kommt)
 export const API_ENDPOINTS = {
   // Auth
   AUTH: {
-    SETUP_STATUS: `/api/auth/setup-status`,
-    SETUP_ADMIN: `/api/auth/setup-admin`,
-    LOGIN: `/api/auth/login`,
-    REGISTER: `/api/auth/register`,
+    SETUP_STATUS: `/auth/setup-status`,
+    SETUP_ADMIN: `/auth/setup-admin`,
+    LOGIN: `/auth/login`,
+    REGISTER: `/auth/register`,
   },
   
   // Admin
   ADMIN: {
-    STATS: `/api/admin/stats`,
-    QUESTIONS: `/api/admin/questions`,
-    CATEGORIES: `/api/admin/categories`,
-    GAMES: `/api/admin/games`,
-    USERS: `/api/admin/users`,
-    IMPORT_CSV: `/api/admin/import-csv`,
+    STATS: `/admin/stats`,
+    QUESTIONS: `/admin/questions`,
+    CATEGORIES: `/admin/categories`,
+    GAMES: `/admin/games`,
+    USERS: `/admin/users`,
+    IMPORT_CSV: `/admin/import-csv`,
   },
   
   // User
   USER: {
-    STATS: `/api/user/stats`,
-    QUESTIONS: `/api/user/questions`,
-    CATEGORIES: `/api/user/categories`,
-    GAMES: `/api/user/games`,
+    STATS: `/user/stats`,
+    QUESTIONS: `/user/questions`,
+    CATEGORIES: `/user/categories`,
+    GAMES: `/user/games`,
   },
   
   // Public
-  HEALTH: `/api/health`,
-  GAMES_PUBLIC: `/api/games/public`,
+  HEALTH: `/health`,
+  GAMES_PUBLIC: `/games/public`,
 } as const
 
 /**
