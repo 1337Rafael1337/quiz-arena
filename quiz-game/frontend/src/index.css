@@ -1,68 +1,134 @@
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --color-bg: #0f0f23;
+  --color-surface: #1a1a2e;
+  --color-surface-hover: #252540;
+  --color-card: rgba(255, 255, 255, 0.07);
+  --color-card-border: rgba(255, 255, 255, 0.12);
+  --color-text: #ffffff;
+  --color-text-muted: #a0a0b8;
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-success: #22c55e;
+  --color-success-hover: #16a34a;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+  --color-joker: #a855f7;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.4);
+  --transition: 0.2s ease;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: var(--color-text);
+  background-color: var(--color-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
 a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+  color: var(--color-primary);
+  text-decoration: none;
 }
 a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  color: var(--color-primary-hover);
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  border: none;
+  transition: all var(--transition);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+input, select, textarea {
+  font-family: inherit;
+  font-size: 1rem;
 }
+
+/* Light mode override */
+[data-theme="light"] {
+  --color-bg: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0f0f3;
+  --color-card: rgba(0, 0, 0, 0.04);
+  --color-card-border: rgba(0, 0, 0, 0.1);
+  --color-text: #1a1a2e;
+  --color-text-muted: #6b7280;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+/* Light mode admin overrides */
+[data-theme="light"] .admin-dashboard { background: #f5f5f7; color: #1a1a2e; }
+[data-theme="light"] .admin-content { color: #1a1a2e; }
+[data-theme="light"] .question-item,
+[data-theme="light"] .game-card,
+[data-theme="light"] .category-item { background: #fff; border: 1px solid #e5e7eb; color: #1a1a2e; }
+[data-theme="light"] .question-text,
+[data-theme="light"] .question-options .option { color: #374151; }
+[data-theme="light"] .question-options .option.correct { background: rgba(34, 197, 94, 0.1); }
+[data-theme="light"] .filters input,
+[data-theme="light"] .filters select,
+[data-theme="light"] .question-form input,
+[data-theme="light"] .question-form select,
+[data-theme="light"] .question-form textarea { background: #fff; color: #1a1a2e; border-color: #d1d5db; }
+[data-theme="light"] .question-form { background: #fff; color: #1a1a2e; }
+[data-theme="light"] .question-form-overlay { background: rgba(0, 0, 0, 0.3); }
+[data-theme="light"] .stat-card { background: #fff; border: 1px solid #e5e7eb; color: #1a1a2e; }
+[data-theme="light"] .stat-label { color: #6b7280; }
+[data-theme="light"] .empty-state { color: #6b7280; }
+[data-theme="light"] .empty-state h3 { color: #374151; }
+[data-theme="light"] .filters { background: #fff; border: 1px solid #e5e7eb; }
+[data-theme="light"] .game-stat .stat-label { color: #6b7280; }
+[data-theme="light"] .game-stat .stat-value { color: #374151; }
+[data-theme="light"] .category-stat { color: #374151; }
+[data-theme="light"] .overview-tab h2,
+[data-theme="light"] .overview-tab h3 { color: #1a1a2e; }
+[data-theme="light"] .user-item { background: #fff; border: 1px solid #e5e7eb; color: #1a1a2e; }
+[data-theme="light"] .search-input { background: #fff; color: #1a1a2e; border: 1px solid #d1d5db; }
+
+/* Light mode login/setup pages */
+[data-theme="light"] .login-container,
+[data-theme="light"] .setup-container { background: #fff; color: #1a1a2e; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+[data-theme="light"] .login-form input,
+[data-theme="light"] .setup-form input,
+[data-theme="light"] .setup-form select { background: #fff; color: #1a1a2e; border-color: #d1d5db; }
+[data-theme="light"] .login-info { color: #6b7280; }
+[data-theme="light"] .form-group label { color: #374151; }
+
+/* Light mode admin login overrides */
+[data-theme="light"] .admin-login { background: linear-gradient(135deg, #f0f0f7 0%, #e4e4f0 100%); }
+[data-theme="light"] .login-header h1 { color: #1a1a2e; }
+[data-theme="light"] .login-header h2 { color: #6b7280; }
+[data-theme="light"] .login-hint { color: #6b7280; }
+[data-theme="light"] .login-hint code { background: rgba(0, 0, 0, 0.06); }
+[data-theme="light"] .users-header h2,
+[data-theme="light"] .questions-header h2 { color: #1a1a2e; }
+[data-theme="light"] .user-card { background: #fff; border: 1px solid #e5e7eb; }
+[data-theme="light"] .user-info h3 { color: #1a1a2e; }
+[data-theme="light"] .user-info p { color: #6b7280; }
+[data-theme="light"] .role-select { background: #fff; color: #1a1a2e; border-color: #d1d5db; }
+[data-theme="light"] .option-input { background: #f3f4f6; }
+[data-theme="light"] .option { background: #f3f4f6; }
+[data-theme="light"] .loading { color: #6b7280; }

@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { apiFetch } from '../../lib/api'
+import QRModal from '../../lib/QRModal'
 
 interface Game {
   id: number
@@ -8,83 +11,69 @@ interface Game {
   max_teams: number
   joker_count: number
   risiko_enabled: boolean
+  game_mode: string
   status: string
   team_count: number
   created_at: string
 }
 
-const GamesManager: React.FC = () => {
+const GamesManager = () => {
+  const navigate = useNavigate()
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  
+  const [qrData, setQrData] = useState<{ url: string; title: string } | null>(null)
+
   const [formData, setFormData] = useState({
     name: '',
     maxTeams: 4,
     jokerCount: 3,
-    risikoEnabled: true
+    risikoEnabled: true,
+    gameMode: 'self_service' as 'quizmaster' | 'self_service'
   })
-  
+
   useEffect(() => {
     fetchGames()
   }, [])
-  
+
   const fetchGames = async () => {
     try {
-      const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/games', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setGames(data)
-      }
+      const data = await apiFetch('/api/admin/games')
+      setGames(data)
     } catch (error) {
       console.error('Error fetching games:', error)
     } finally {
       setLoading(false)
     }
   }
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.name.trim()) {
       alert('Spiel-Name ist erforderlich')
       return
     }
-    
+
     try {
-      const token = localStorage.getItem('adminToken')
-      const response = await fetch('http://localhost:3001/api/admin/games', {
+      const result = await apiFetch('/api/admin/games', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
+        body: formData
       })
-      
-      if (response.ok) {
-        const result = await response.json()
-        alert(`Spiel erstellt! Code: ${result.gameCode}`)
-        resetForm()
-        fetchGames()
-      } else {
-        const error = await response.json()
-        alert(`Fehler: ${error.error}`)
-      }
-    } catch (error) {
-      alert(`Fehler: ${error.message}`)
+
+      alert(`Spiel erstellt! Code: ${result.gameCode}`)
+      resetForm()
+      fetchGames()
+    } catch (err: any) {
+      alert(`Fehler: ${err.message}`)
     }
   }
-  
+
   const copyGameCode = (gameCode: string) => {
     navigator.clipboard.writeText(gameCode)
     alert(`Spielcode ${gameCode} kopiert!`)
   }
-  
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'waiting': return '#ff9800'
@@ -93,7 +82,7 @@ const GamesManager: React.FC = () => {
       default: return '#2196f3'
     }
   }
-  
+
   const getStatusText = (status: string) => {
     switch (status) {
       case 'waiting': return 'Wartet auf Teams'
@@ -102,41 +91,62 @@ const GamesManager: React.FC = () => {
       default: return status
     }
   }
-  
+
+  const getModeText = (mode: string) => {
+    return mode === 'quizmaster' ? 'Quizmaster' : 'Selbstbedienung'
+  }
+
+  const handleDeleteGame = async (id: number, name: string) => {
+    if (!confirm(`Spiel "${name}" wirklich löschen? Alle Teams und Ergebnisse werden entfernt.`)) return
+    try {
+      await apiFetch(`/api/admin/games/${id}`, { method: 'DELETE' })
+      fetchGames()
+    } catch (err: any) {
+      alert(`Fehler: ${err.message}`)
+    }
+  }
+
+  const handleCancelGame = async (id: number, name: string) => {
+    if (!confirm(`Spiel "${name}" wirklich beenden?`)) return
+    try {
+      await apiFetch(`/api/admin/games/${id}/cancel`, { method: 'PATCH' })
+      fetchGames()
+    } catch (err: any) {
+      alert(`Fehler: ${err.message}`)
+    }
+  }
+
   const resetForm = () => {
     setShowForm(false)
     setFormData({
       name: '',
       maxTeams: 4,
       jokerCount: 3,
-      risikoEnabled: true
+      risikoEnabled: true,
+      gameMode: 'self_service'
     })
   }
-  
-  if (loading) return <div className="loading">Loading games...</div>
-  
+
+  if (loading) return <div className="loading">Lade Spiele...</div>
+
   return (
     <div className="games-manager">
       <div className="games-header">
-        <h2>🎮 Spiele verwalten</h2>
-        <button 
-          className="btn-add"
-          onClick={() => setShowForm(true)}
-        >
-          ➕ Neues Spiel
+        <h2>Spiele verwalten</h2>
+        <button className="btn-add" onClick={() => setShowForm(true)}>
+          Neues Spiel
         </button>
       </div>
-      
-      {/* Game Creation Form */}
+
       {showForm && (
         <div className="question-form-overlay">
           <div className="question-form">
             <h3>Neues Spiel erstellen</h3>
-            
+
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Spielname</label>
-                <input 
+                <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -144,11 +154,22 @@ const GamesManager: React.FC = () => {
                   required
                 />
               </div>
-              
+
               <div className="form-row">
                 <div className="form-group">
+                  <label>Spielmodus</label>
+                  <select
+                    value={formData.gameMode}
+                    onChange={(e) => setFormData({...formData, gameMode: e.target.value as 'quizmaster' | 'self_service'})}
+                  >
+                    <option value="self_service">Selbstbedienung (Teams wählen selbst)</option>
+                    <option value="quizmaster">Quizmaster (Spielleiter steuert)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
                   <label>Maximale Teams</label>
-                  <select 
+                  <select
                     value={formData.maxTeams}
                     onChange={(e) => setFormData({...formData, maxTeams: parseInt(e.target.value)})}
                   >
@@ -158,10 +179,10 @@ const GamesManager: React.FC = () => {
                     <option value="6">6 Teams</option>
                   </select>
                 </div>
-                
+
                 <div className="form-group">
                   <label>Joker pro Team</label>
-                  <select 
+                  <select
                     value={formData.jokerCount}
                     onChange={(e) => setFormData({...formData, jokerCount: parseInt(e.target.value)})}
                   >
@@ -173,21 +194,18 @@ const GamesManager: React.FC = () => {
                   </select>
                 </div>
               </div>
-              
+
               <div className="form-group">
                 <label className="checkbox-label">
-                  <input 
+                  <input
                     type="checkbox"
                     checked={formData.risikoEnabled}
                     onChange={(e) => setFormData({...formData, risikoEnabled: e.target.checked})}
                   />
                   RISIKO-Fragen aktivieren
-                  <span className="checkbox-help">
-                    (Doppelte Punkte bei richtiger, Punktverlust bei falscher Antwort)
-                  </span>
                 </label>
               </div>
-              
+
               <div className="form-actions">
                 <button type="button" onClick={resetForm} className="btn-cancel">
                   Abbrechen
@@ -200,65 +218,70 @@ const GamesManager: React.FC = () => {
           </div>
         </div>
       )}
-      
-      {/* Games List */}
+
       <div className="games-list">
         {games.map(game => (
           <div key={game.id} className="game-card">
             <div className="game-header">
               <div className="game-title">
                 <h3>{game.name}</h3>
-                <span 
+                <span
                   className="status-badge"
                   style={{ backgroundColor: getStatusColor(game.status) }}
                 >
                   {getStatusText(game.status)}
                 </span>
+                <span className="mode-badge">
+                  {getModeText(game.game_mode)}
+                </span>
               </div>
-              
+
               <div className="game-code-section">
                 <div className="game-code">{game.game_code}</div>
-                <button 
+                <button
                   className="btn-copy"
                   onClick={() => copyGameCode(game.game_code)}
                   title="Code kopieren"
                 >
-                  📋
+                  Kopieren
+                </button>
+                <button
+                  className="btn-copy"
+                  onClick={() => setQrData({
+                    url: `${window.location.origin}/join?code=${game.game_code}`,
+                    title: `Spiel beitreten: ${game.name}`
+                  })}
+                  title="QR-Code anzeigen"
+                >
+                  QR
                 </button>
               </div>
             </div>
-            
+
             <div className="game-details">
               <div className="game-stat">
                 <span className="stat-label">Teams:</span>
                 <span className="stat-value">{game.team_count} / {game.max_teams}</span>
               </div>
-              
               <div className="game-stat">
                 <span className="stat-label">Joker:</span>
                 <span className="stat-value">{game.joker_count} pro Team</span>
               </div>
-              
               <div className="game-stat">
                 <span className="stat-label">RISIKO:</span>
                 <span className="stat-value">
-                  {game.risiko_enabled ? '✅ Aktiviert' : '❌ Deaktiviert'}
+                  {game.risiko_enabled ? 'Aktiviert' : 'Deaktiviert'}
                 </span>
               </div>
-              
               <div className="game-stat">
                 <span className="stat-label">Erstellt:</span>
                 <span className="stat-value">
                   {new Date(game.created_at).toLocaleDateString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
                   })}
                 </span>
               </div>
-              
               {game.creator_name && (
                 <div className="game-stat">
                   <span className="stat-label">Ersteller:</span>
@@ -266,43 +289,47 @@ const GamesManager: React.FC = () => {
                 </div>
               )}
             </div>
-            
-            <div className="game-actions">
-              <button 
-                className="btn-monitor"
-                title="Spiel überwachen"
-                disabled={game.status === 'finished'}
-              >
-                👁️ Überwachen
+
+            <div className="question-actions">
+              <button className="btn-edit" onClick={() => copyGameCode(game.game_code)}>
+                Code teilen
               </button>
-              
-              <button 
-                className="btn-share"
-                onClick={() => copyGameCode(game.game_code)}
-                title="Code teilen"
-              >
-                🔗 Code teilen
-              </button>
-              
-              {game.status === 'waiting' && (
-                <button 
-                  className="btn-delete"
-                  title="Spiel löschen"
-                >
-                  🗑️ Löschen
+              {(game.status === 'waiting' || game.status === 'active') && (
+                <button className="btn-edit" onClick={() => setQrData({
+                  url: `${window.location.origin}/spectate?code=${game.game_code}`,
+                  title: `Beamer: ${game.name}`
+                })}>
+                  Beamer-QR
+                </button>
+              )}
+              {game.status === 'finished' && (
+                <button className="btn-edit" onClick={() => navigate(`/game/results?id=${game.id}&source=admin`)}>
+                  Ergebnisse
+                </button>
+              )}
+              {game.status === 'active' && (
+                <button className="btn-delete" onClick={() => handleCancelGame(game.id, game.name)}>
+                  Beenden
+                </button>
+              )}
+              {game.status !== 'active' && (
+                <button className="btn-delete" onClick={() => handleDeleteGame(game.id, game.name)}>
+                  Löschen
                 </button>
               )}
             </div>
           </div>
         ))}
       </div>
-      
+
       {games.length === 0 && (
         <div className="empty-state">
           <h3>Keine Spiele vorhanden</h3>
           <p>Erstelle dein erstes Spiel um loszulegen</p>
         </div>
       )}
+
+      {qrData && <QRModal url={qrData.url} title={qrData.title} onClose={() => setQrData(null)} />}
     </div>
   )
 }

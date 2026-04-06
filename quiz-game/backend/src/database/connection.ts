@@ -1,12 +1,13 @@
 import pkg from 'pg'
 const { Pool } = pkg
+import { config } from '../config.js'
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'quiz_arena',
-  user: process.env.DB_USER || 'quiz_user',
-  password: process.env.DB_PASSWORD || 'quiz_password_123',
+  host: config.DB_HOST,
+  port: config.DB_PORT,
+  database: config.DB_NAME,
+  user: config.DB_USER,
+  password: config.DB_PASSWORD,
 })
 
 // Test connection

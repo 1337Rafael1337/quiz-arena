@@ -27,24 +27,32 @@ interface QuestionCell {
   isRisiko: boolean
 }
 
+interface Ranking {
+  name: string
+  score: number
+  rank: number
+}
+
 interface GameStore {
   // Connection
   socket: Socket | null
   connected: boolean
-  
+
   // Game state
   gameCode: string | null
   teamId: string | null
   teams: Team[]
   currentQuestion: Question | null
   gameStatus: 'waiting' | 'active' | 'finished'
+  gameMode: 'quizmaster' | 'self_service'
   questionGrid: QuestionCell[][]
-  
+  rankings: Ranking[]
+
   // UI state
   selectedAnswer: number | null
   timeRemaining: number
   showResults: boolean
-  
+
   // Actions
   setSocket: (socket: Socket) => void
   setConnected: (connected: boolean) => void
@@ -55,7 +63,6 @@ interface GameStore {
 }
 
 export const useGameStore = create<GameStore>((set) => ({
-  // Initial state
   socket: null,
   connected: false,
   gameCode: null,
@@ -63,12 +70,13 @@ export const useGameStore = create<GameStore>((set) => ({
   teams: [],
   currentQuestion: null,
   gameStatus: 'waiting',
+  gameMode: 'self_service',
   questionGrid: [],
+  rankings: [],
   selectedAnswer: null,
   timeRemaining: 30,
   showResults: false,
-  
-  // Actions
+
   setSocket: (socket) => set({ socket }),
   setConnected: (connected) => set({ connected }),
   setGameCode: (code) => set({ gameCode: code }),
@@ -80,7 +88,9 @@ export const useGameStore = create<GameStore>((set) => ({
     teams: [],
     currentQuestion: null,
     gameStatus: 'waiting',
+    gameMode: 'self_service',
     questionGrid: [],
+    rankings: [],
     selectedAnswer: null,
     timeRemaining: 30,
     showResults: false

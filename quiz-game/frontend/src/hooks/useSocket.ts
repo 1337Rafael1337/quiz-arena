@@ -3,91 +3,115 @@ import { io, Socket } from 'socket.io-client'
 import { useGameStore } from '../store/gameStore'
 
 export const useSocket = () => {
-  const store = useGameStore()
   const socketRef = useRef<Socket | null>(null)
-  
+
   useEffect(() => {
-    // Prevent multiple socket creation
-    if (socketRef.current) {
-      console.log('🔌 Socket already exists, reusing...')
-      return
+    const connect = () => {
+      const store = useGameStore.getState()
+
+      // Disconnect existing socket before reconnecting
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
+      }
+
+      const socketUrl = import.meta.env.VITE_API_URL || window.location.origin
+
+      const socket = io(socketUrl, {
+        path: '/socket.io/',
+        withCredentials: true, // send httpOnly auth cookie with upgrade request
+      })
+      socketRef.current = socket
+      store.setSocket(socket)
+
+      socket.on('connect', () => {
+        useGameStore.getState().setConnected(true)
+      })
+
+      socket.on('disconnect', () => {
+        useGameStore.getState().setConnected(false)
+      })
+
+      socket.on('connect_error', () => {
+        useGameStore.getState().setConnected(false)
+      })
+
+      socket.on('joined_game', (data) => {
+        useGameStore.getState().updateGameState({
+          teamId: data.teamId,
+          gameCode: data.gameCode
+        })
+      })
+
+      socket.on('game_state_updated', (data) => {
+        useGameStore.getState().updateGameState({
+          teams: data.teams,
+          gameStatus: data.status,
+          questionGrid: data.questionGrid || [],
+          gameMode: data.gameMode
+        })
+      })
+
+      socket.on('game_started', (data) => {
+        useGameStore.getState().updateGameState({
+          gameStatus: 'active',
+          teams: data.teams,
+          questionGrid: data.questionGrid || [],
+          gameMode: data.gameMode
+        })
+      })
+
+      socket.on('question_selected', (data) => {
+        useGameStore.getState().updateGameState({
+          currentQuestion: data.question,
+          questionGrid: data.questionGrid,
+          selectedAnswer: null,
+          showResults: false,
+          timeRemaining: data.question.timeLimit || 30
+        })
+      })
+
+      socket.on('answer_result', (data) => {
+        useGameStore.getState().updateGameState({
+          teams: data.teams,
+          showResults: true
+        })
+      })
+
+      socket.on('time_up', () => {
+        useGameStore.getState().updateGameState({
+          timeRemaining: 0
+        })
+      })
+
+      socket.on('game_finished', (data) => {
+        useGameStore.getState().updateGameState({
+          gameStatus: 'finished',
+          rankings: data.rankings
+        })
+      })
+
+      socket.on('error', (data) => {
+        console.error('Server error:', data.message)
+        alert('Fehler: ' + data.message)
+      })
     }
-    
-    const serverUrl = 'http://localhost:3001'
-    console.log('🔌 Creating new socket connection to:', serverUrl)
-    
-    const socket = io(serverUrl)
-    socketRef.current = socket
-    store.setSocket(socket)
-    
-    // Connection events
-    socket.on('connect', () => {
-      console.log('✅ Connected to server:', socket.id)
-      store.setConnected(true)
-    })
-    
-    socket.on('disconnect', (reason) => {
-      console.log('❌ Disconnected:', reason)
-      store.setConnected(false)
-    })
-    
-    socket.on('connect_error', (error) => {
-      console.error('❌ Connection error:', error)
-      store.setConnected(false)
-    })
-    
-    // Game events
-    socket.on('game_created', (data) => {
-      console.log('🎮 Game created:', data.gameCode)
-      store.updateGameState({ gameCode: data.gameCode })
-    })
-    
-    socket.on('joined_game', (data) => {
-      console.log('👥 Joined game:', data)
-      store.updateGameState({ 
-        teamId: data.teamId,
-        gameCode: data.gameCode 
-      })
-    })
-    
-    socket.on('game_state_updated', (data) => {
-      console.log('📊 Game state updated')
-      store.updateGameState({ 
-        teams: data.teams,
-        gameStatus: data.status,
-        questionGrid: data.questionGrid || []
-      })
-    })
-    
-    socket.on('question_selected', (data) => {
-      console.log('❓ Question selected')
-      store.updateGameState({ 
-        currentQuestion: data.question,
-        questionGrid: data.questionGrid,
-        selectedAnswer: null,
-        showResults: false,
-        timeRemaining: data.question.timeLimit || 30
-      })
-    })
-    
-    socket.on('answer_result', (data) => {
-      console.log('💯 Answer result')
-      store.updateGameState({ 
-        teams: data.teams,
-        showResults: true
-      })
-    })
-    
-    socket.on('error', (data) => {
-      console.error('❌ Server error:', data.message)
-      alert('Fehler: ' + data.message)
-    })
-    
-    // Cleanup function
+
+    connect()
+
+    // Reconnect when auth state changes (login/logout)
+    const handleAuthChange = () => connect()
+    window.addEventListener('auth-changed', handleAuthChange)
+
     return () => {
-      console.log('🔌 Cleaning up socket connection')
-      socket.disconnect()
+      window.removeEventListener('auth-changed', handleAuthChange)
+      socketRef.current?.disconnect()
       socketRef.current = null
     }
-  }, []) // EMPTY dependency array!
+  }, [])
+}
+
+// Call this after login/logout to trigger socket reconnection
+export function notifyAuthChange() {
+  window.dispatchEvent(new Event('auth-changed'))
 }

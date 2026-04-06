@@ -1,8 +1,8 @@
-import React from 'react'
+
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../store/gameStore'
 
-const HomePage: React.FC = () => {
+const HomePage = () => {
   const navigate = useNavigate()
   const { connected } = useGameStore()
   

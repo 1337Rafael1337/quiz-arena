@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { apiFetch } from '../lib/api'
+import { notifyAuthChange } from '../hooks/useSocket'
 
-const AdminLogin: React.FC = () => {
+const AdminLogin = () => {
   const navigate = useNavigate()
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
   const [credentials, setCredentials] = useState({
@@ -17,59 +19,45 @@ const AdminLogin: React.FC = () => {
 
   const checkSetupStatus = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/auth/setup-status')
-      const data = await response.json()
-      
+      const data = await apiFetch('/api/auth/setup-status')
       if (data.setupRequired) {
         navigate('/setup')
         return
       }
-      
       setSetupRequired(false)
-    } catch (error) {
-      console.error('Error checking setup status:', error)
+    } catch {
       setSetupRequired(false)
     }
   }
-  
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
-    
+
     try {
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      const data = await apiFetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
+        body: credentials
       })
-      
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Login failed')
-      }
-      
-      const data = await response.json()
-      
-      // Store token
-      localStorage.setItem('adminToken', data.token)
+
       localStorage.setItem('adminUser', JSON.stringify(data.user))
-      
-      // Redirect based on role
+      notifyAuthChange()
+
       if (data.user.role === 'admin') {
         navigate('/admin/dashboard')
+      } else if (data.user.role === 'gamemaster') {
+        navigate('/gamemaster/dashboard')
       } else {
-        navigate('/user/dashboard') // For regular users
+        navigate('/')
       }
-    } catch (error) {
-      setError(error.message)
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }
-  
+
   if (setupRequired === null) {
     return (
       <div className="admin-login">
@@ -84,18 +72,18 @@ const AdminLogin: React.FC = () => {
     <div className="admin-login">
       <div className="login-container">
         <div className="login-header">
-          <h1>🎯 Quiz Arena</h1>
-          <h2>🔐 Anmeldung</h2>
+          <h1>Quiz Arena</h1>
+          <h2>Anmeldung</h2>
           <p>Melden Sie sich mit Ihren Zugangsdaten an</p>
         </div>
-        
+
         <form onSubmit={handleLogin} className="login-form">
           {error && (
             <div className="error-banner">
-              ❌ {error}
+              {error}
             </div>
           )}
-          
+
           <div className="form-group">
             <label>Benutzername</label>
             <input
@@ -106,7 +94,7 @@ const AdminLogin: React.FC = () => {
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label>Passwort</label>
             <input
@@ -117,25 +105,40 @@ const AdminLogin: React.FC = () => {
               required
             />
           </div>
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             className="btn-login"
             disabled={loading}
           >
-            {loading ? '⏳ Anmelden...' : '🚀 Anmelden'}
+            {loading ? 'Anmelden...' : 'Anmelden'}
+          </button>
+
+          <button
+            type="button"
+            className="btn-register-link"
+            onClick={() => navigate('/forgot-password')}
+            style={{ marginTop: '0.5rem' }}
+          >
+            Passwort vergessen?
           </button>
         </form>
-        
+
         <div className="login-info">
-          <p>💡 <strong>Hinweis:</strong> Sowohl Administratoren als auch normale Benutzer melden sich hier an.</p>
+          <p><strong>Hinweis:</strong> Administratoren, Spielleiter und Benutzer melden sich hier an.</p>
+          <button
+            className="btn-register-link"
+            onClick={() => navigate('/register')}
+          >
+            Als Spielleiter registrieren
+          </button>
         </div>
-        
-        <button 
+
+        <button
           className="back-btn"
           onClick={() => navigate('/')}
         >
-          ← Zurück zum Spiel
+          Zurück zum Spiel
         </button>
       </div>
     </div>

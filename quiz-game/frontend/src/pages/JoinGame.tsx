@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGameStore } from '../store/gameStore'
 
-const JoinGame: React.FC = () => {
+const JoinGame = () => {
   const navigate = useNavigate()
   const { socket, connected } = useGameStore()
   

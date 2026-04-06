@@ -2,53 +2,36 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../lib/api'
 
-const SetupWizard = () => {
+const RegisterGamemaster = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     confirmPassword: ''
   })
-  const [errors, setErrors] = useState<string[]>([])
-
-  const validateForm = () => {
-    const newErrors: string[] = []
-
-    if (!formData.username.trim()) {
-      newErrors.push('Benutzername ist erforderlich')
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.push('E-Mail ist erforderlich')
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.push('Ungültige E-Mail-Adresse')
-    }
-
-    if (!formData.password) {
-      newErrors.push('Passwort ist erforderlich')
-    } else if (formData.password.length < 8) {
-      newErrors.push('Passwort muss mindestens 8 Zeichen lang sein')
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.push('Passwörter stimmen nicht überein')
-    }
-
-    setErrors(newErrors)
-    return newErrors.length === 0
-  }
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
 
-    if (!validateForm()) return
+    if (formData.password.length < 8) {
+      setError('Passwort muss mindestens 8 Zeichen lang sein')
+      return
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwörter stimmen nicht überein')
+      return
+    }
 
     setLoading(true)
 
     try {
-      const data = await apiFetch('/api/auth/setup-admin', {
+      await apiFetch('/api/auth/register-gamemaster', {
         method: 'POST',
         body: {
           username: formData.username,
@@ -56,25 +39,48 @@ const SetupWizard = () => {
           password: formData.password
         }
       })
-
-      localStorage.setItem('adminUser', JSON.stringify(data.user))
-      navigate('/admin/dashboard')
+      setSuccess(true)
     } catch (err: any) {
-      setErrors([err.message || 'Fehler beim Erstellen des Admin-Accounts'])
+      setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (success) {
+    return (
+      <div className="setup-wizard">
+        <div className="setup-container">
+          <div className="setup-header">
+            <h1>Registrierung erfolgreich!</h1>
+            <p>
+              Wir haben dir einen Bestätigungslink an <strong>{formData.email}</strong> gesendet.
+              Bitte bestätige deine Email-Adresse um dich einloggen zu können.
+            </p>
+          </div>
+          <button className="btn-setup" onClick={() => navigate('/admin/login')}>
+            Zum Login
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="setup-wizard">
       <div className="setup-container">
         <div className="setup-header">
-          <h1>Quiz Arena Setup</h1>
-          <p>Willkommen! Erstellen Sie Ihren ersten Administrator-Account.</p>
+          <h1>Als Spielleiter registrieren</h1>
+          <p>Erstelle einen Account um eigene Quiz-Spiele zu erstellen und zu verwalten.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="setup-form">
+          {error && (
+            <div className="error-messages">
+              <div className="error-message">{error}</div>
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="username">Benutzername *</label>
             <input
@@ -82,7 +88,7 @@ const SetupWizard = () => {
               id="username"
               value={formData.username}
               onChange={(e) => setFormData({...formData, username: e.target.value})}
-              placeholder="admin"
+              placeholder="Dein Benutzername"
               required
             />
           </div>
@@ -94,7 +100,7 @@ const SetupWizard = () => {
               id="email"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
-              placeholder="admin@example.com"
+              placeholder="deine@email.de"
               required
             />
           </div>
@@ -123,37 +129,17 @@ const SetupWizard = () => {
             />
           </div>
 
-          {errors.length > 0 && (
-            <div className="error-messages">
-              {errors.map((error, index) => (
-                <div key={index} className="error-message">
-                  {error}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="btn-setup"
-            disabled={loading}
-          >
-            {loading ? 'Erstelle Admin...' : 'Admin erstellen'}
+          <button type="submit" className="btn-setup" disabled={loading}>
+            {loading ? 'Registriere...' : 'Registrieren'}
           </button>
         </form>
 
-        <div className="setup-info">
-          <h3>Wichtige Informationen:</h3>
-          <ul>
-            <li>Dieser Account wird Administrator-Rechte haben</li>
-            <li>Sie können später weitere Benutzer erstellen</li>
-            <li>Merken Sie sich Ihre Zugangsdaten gut</li>
-            <li>Das Setup kann nur einmal durchgeführt werden</li>
-          </ul>
-        </div>
+        <button className="back-btn" onClick={() => navigate('/admin/login')}>
+          Zurück zum Login
+        </button>
       </div>
     </div>
   )
 }
 
-export default SetupWizard
+export default RegisterGamemaster
