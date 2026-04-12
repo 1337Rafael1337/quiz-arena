@@ -44,6 +44,9 @@ interface GameState {
   jokerCount: number
   risikoEnabled: boolean
   gameMode: 'quizmaster' | 'self_service'
+  answerMode: 'competitive' | 'turns'
+  teamOrder: string[]       // team IDs in join order, fixed at startGame
+  activeTeamIndex: number   // index into teamOrder; cycles on each answered question
   creatorId: number | null
   questionStartedAt: number | null
 }
@@ -83,43 +86,32 @@ export class GameEngine {
 
     const session = result.rows[0]
 
-    // Load questions from DB grouped by category
+    // Load questions: global admin questions + the game creator's own questions
     const questionsResult = await this.pool.query(`
       SELECT q.id, q.question_text, q.points, q.time_limit, q.is_risiko,
              c.name as category_name, c.id as category_id
       FROM questions q
       JOIN question_categories c ON q.category_id = c.id
+      WHERE q.created_by IS NULL
+         OR q.created_by = $1
       ORDER BY c.name, q.points
-    `)
+    `, [session.creator_id])
 
-    // Build question grid from DB questions
     const questionGrid = this.buildQuestionGrid(questionsResult.rows, session.risiko_enabled)
 
-    const game: GameState = {
-      gameCode,
-      dbId: session.id,
-      name: session.name,
-      teams: new Map(),
-      status: session.status,
-      currentQuestion: null,
-      questionGrid,
-      maxTeams: session.max_teams,
-      jokerCount: session.joker_count,
-      risikoEnabled: session.risiko_enabled,
-      gameMode: session.game_mode || 'self_service',
-      creatorId: session.creator_id,
-      questionStartedAt: null,
-    }
-
-    // Load existing teams from DB
+    // Load teams ordered by ID (insertion order) so teamOrder is deterministic on reload
     const teamsResult = await this.pool.query(
-      'SELECT * FROM teams WHERE game_session_id = $1',
+      'SELECT * FROM teams WHERE game_session_id = $1 ORDER BY id ASC',
       [session.id]
     )
 
+    const teamOrder: string[] = []
+    const teamsMap = new Map<string, Team>()
+
     for (const t of teamsResult.rows) {
-      game.teams.set(`team_${t.id}`, {
-        id: `team_${t.id}`,
+      const teamId = `team_${t.id}`
+      teamsMap.set(teamId, {
+        id: teamId,
         dbId: t.id,
         name: t.name,
         color: t.color,
@@ -127,6 +119,26 @@ export class GameEngine {
         jokersRemaining: t.jokers_remaining,
         activeJokers: { doublePoints: false },
       })
+      teamOrder.push(teamId)
+    }
+
+    const game: GameState = {
+      gameCode,
+      dbId: session.id,
+      name: session.name,
+      teams: teamsMap,
+      status: session.status,
+      currentQuestion: null,
+      questionGrid,
+      maxTeams: session.max_teams,
+      jokerCount: session.joker_count,
+      risikoEnabled: session.risiko_enabled,
+      gameMode: session.game_mode || 'self_service',
+      answerMode: session.answer_mode || 'competitive',
+      teamOrder: session.status === 'active' ? teamOrder : [],
+      activeTeamIndex: 0,
+      creatorId: session.creator_id,
+      questionStartedAt: null,
     }
 
     // Mark already-answered questions as used
@@ -145,12 +157,11 @@ export class GameEngine {
     }
 
     this.games.set(gameCode, game)
-    console.log(`Game loaded: ${gameCode} - ${session.name} (${questionGrid.length} categories)`)
+    console.log(`Game loaded: ${gameCode} - ${session.name} (${questionGrid.length} categories, mode: ${game.answerMode})`)
     return game
   }
 
   private buildQuestionGrid(questions: any[], risikoEnabled: boolean): QuestionCell[][] {
-    // Group by category
     const categoryMap = new Map<string, any[]>()
     for (const q of questions) {
       const cat = q.category_name
@@ -162,7 +173,6 @@ export class GameEngine {
 
     return Array.from(categoryMap.entries()).map(([category, catQuestions], catIndex) => {
       return pointTiers.map((points, pointIndex) => {
-        // Find a question matching this point tier, or the closest available
         const matching = catQuestions.find(q => q.points === points)
         const question = matching || catQuestions[pointIndex]
 
@@ -205,10 +215,8 @@ export class GameEngine {
       throw new Error('Spiel hat bereits begonnen')
     }
 
-    // Insert team into DB
     const teamId = 'team_' + Math.random().toString(36).substring(2, 9)
 
-    // Insert async but don't block
     this.pool.query(
       'INSERT INTO teams (game_session_id, name, color, jokers_remaining) VALUES ($1, $2, $3, $4) RETURNING id',
       [game.dbId, teamName, teamColor, game.jokerCount]
@@ -239,19 +247,45 @@ export class GameEngine {
 
     game.status = 'active'
 
+    // Fix turn order at game start (insertion order of the Map = join order)
+    game.teamOrder = Array.from(game.teams.keys())
+    game.activeTeamIndex = 0
+
     await this.pool.query(
       "UPDATE game_sessions SET status = 'active', started_at = NOW() WHERE game_code = $1",
       [gameCode]
     )
   }
 
-  async selectQuestion(gameCode: string, questionId: string): Promise<LoadedQuestion | null> {
+  /** Returns the ID of the currently active team (turns mode only), or null. */
+  getActiveTeamId(gameCode: string): string | null {
+    const game = this.getGame(gameCode)
+    if (!game || game.answerMode !== 'turns' || game.teamOrder.length === 0) return null
+    return game.teamOrder[game.activeTeamIndex] ?? null
+  }
+
+  /** Advances to the next team's turn. Returns the new active team ID, or null. */
+  advanceTurn(gameCode: string): string | null {
+    const game = this.getGame(gameCode)
+    if (!game || game.answerMode !== 'turns' || game.teamOrder.length === 0) return null
+    game.activeTeamIndex = (game.activeTeamIndex + 1) % game.teamOrder.length
+    return game.teamOrder[game.activeTeamIndex]
+  }
+
+  async selectQuestion(gameCode: string, questionId: string, selectingTeamId?: string): Promise<LoadedQuestion | null> {
     const game = this.getGame(gameCode)
     if (!game) throw new Error('Spiel nicht gefunden')
     if (game.status !== 'active') throw new Error('Spiel ist nicht aktiv')
     if (game.currentQuestion) throw new Error('Es läuft bereits eine Frage')
 
-    // Find the cell in the grid
+    // In turns mode with self_service: only active team may select
+    if (game.answerMode === 'turns' && game.gameMode === 'self_service' && selectingTeamId) {
+      const activeTeamId = this.getActiveTeamId(gameCode)
+      if (selectingTeamId !== activeTeamId) {
+        throw new Error('Du bist nicht an der Reihe')
+      }
+    }
+
     let cell: QuestionCell | null = null
     for (const row of game.questionGrid) {
       for (const c of row) {
@@ -266,7 +300,6 @@ export class GameEngine {
     if (!cell) throw new Error('Frage nicht verfügbar')
     if (cell.dbQuestionId === 0) throw new Error('Keine Frage für dieses Feld verfügbar')
 
-    // Load full question from DB
     const qResult = await this.pool.query(`
       SELECT q.*, c.name as category_name
       FROM questions q
@@ -287,7 +320,7 @@ export class GameEngine {
       id: q.id,
       questionText: q.question_text,
       category: q.category_name,
-      points: cell.points, // Use grid points, not DB points
+      points: cell.points,
       isRisiko: cell.isRisiko,
       timeLimit: q.time_limit,
       options: optionsResult.rows.map(o => ({
@@ -305,7 +338,6 @@ export class GameEngine {
   }
 
   startQuestionTimer(gameCode: string, timeLimit: number, onTimeUp: () => void): void {
-    // Clear any existing timer
     this.clearQuestionTimer(gameCode)
 
     const timer = setTimeout(() => {
@@ -341,6 +373,7 @@ export class GameEngine {
     wasRisiko: boolean
     wasDoublePoints: boolean
     correctOptionId: number
+    newActiveTeamId: string | null
   } | null> {
     const game = this.getGame(gameCode)
     if (!game) throw new Error('Spiel nicht gefunden')
@@ -361,21 +394,26 @@ export class GameEngine {
     const team = game.teams.get(teamId)
     if (!team) throw new Error('Team nicht gefunden')
 
+    // In turns mode: only the active team may submit
+    if (game.answerMode === 'turns') {
+      const activeTeamId = this.getActiveTeamId(gameCode)
+      if (teamId !== activeTeamId) {
+        throw new Error('Du bist nicht an der Reihe')
+      }
+    }
+
     const selectedOption = question.options.find(o => o.id === optionId)
     if (!selectedOption) throw new Error('Ungültige Antwort')
 
     const correctOption = question.options.find(o => o.isCorrect)
     const isCorrect = selectedOption.isCorrect
 
-    // Capture joker state BEFORE resetting
     const wasDoublePoints = team.activeJokers.doublePoints
 
     let pointsAwarded = 0
     if (isCorrect) {
       pointsAwarded = question.points
-      if (wasDoublePoints) {
-        pointsAwarded *= 2
-      }
+      if (wasDoublePoints) pointsAwarded *= 2
     } else if (question.isRisiko) {
       pointsAwarded = -question.points
     }
@@ -383,14 +421,12 @@ export class GameEngine {
     team.score += pointsAwarded
     team.activeJokers.doublePoints = false
 
-    // Update team score in DB
     if (team.dbId) {
       this.pool.query(
         'UPDATE teams SET current_score = $1 WHERE id = $2',
         [team.score, team.dbId]
       ).catch(err => console.error('Error updating team score:', err))
 
-      // Record answer in game_answers (using captured joker state)
       const timeTaken = Math.round(question.timeLimit - serverTimeRemaining)
       this.pool.query(`
         INSERT INTO game_answers (game_session_id, team_id, question_id, selected_option_id, is_correct, points_awarded, time_taken, joker_used)
@@ -407,12 +443,14 @@ export class GameEngine {
       ]).catch(err => console.error('Error recording answer:', err))
     }
 
-    // Clear the question after answer
     game.currentQuestion = null
     game.questionStartedAt = null
     this.clearQuestionTimer(gameCode)
 
-    // Check if all questions are used → auto-end
+    // Advance turn BEFORE checking all-used (so activeTeamId is correct for next round)
+    const newActiveTeamId = game.answerMode === 'turns' ? this.advanceTurn(gameCode) : null
+
+    // Auto-end game when all questions used
     const allUsed = game.questionGrid.every(row => row.every(cell => cell.used || cell.dbQuestionId === 0))
     if (allUsed) {
       await this.endGame(gameCode)
@@ -425,6 +463,7 @@ export class GameEngine {
       wasRisiko: question.isRisiko,
       wasDoublePoints,
       correctOptionId: correctOption?.id || 0,
+      newActiveTeamId,
     }
   }
 
@@ -451,7 +490,6 @@ export class GameEngine {
 
     team.jokersRemaining--
 
-    // Update in DB
     if (team.dbId) {
       this.pool.query(
         'UPDATE teams SET jokers_remaining = $1 WHERE id = $2',
@@ -470,7 +508,6 @@ export class GameEngine {
       case '50_50': {
         const question = game.currentQuestion
         const wrongOptions = question.options.filter(o => !o.isCorrect)
-        // Randomly pick 2 wrong options to eliminate
         const shuffled = wrongOptions.sort(() => Math.random() - 0.5)
         const eliminated = shuffled.slice(0, 2).map(o => o.id)
         return { type: '50_50', globalEffect: true, eliminatedOptions: eliminated }
@@ -498,7 +535,6 @@ export class GameEngine {
       [gameCode]
     )
 
-    // Build rankings
     const teamsArray = Array.from(game.teams.values())
       .sort((a, b) => b.score - a.score)
 

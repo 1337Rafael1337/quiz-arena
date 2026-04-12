@@ -22,7 +22,7 @@ const UsersManager = () => {
     username: '',
     email: '',
     password: '',
-    role: 'user'
+    role: 'gamemaster'
   })
 
   const [passwordData, setPasswordData] = useState({
@@ -127,7 +127,7 @@ const UsersManager = () => {
 
   const resetForm = () => {
     setShowForm(false)
-    setFormData({ username: '', email: '', password: '', role: 'user' })
+    setFormData({ username: '', email: '', password: '', role: 'gamemaster' })
   }
 
   const toggleUserStatus = (user: User) => {
@@ -204,7 +204,6 @@ const UsersManager = () => {
                     value={formData.role}
                     onChange={(e) => setFormData({...formData, role: e.target.value})}
                   >
-                    <option value="user">Benutzer</option>
                     <option value="gamemaster">Spielleiter</option>
                     <option value="admin">Administrator</option>
                   </select>
@@ -305,7 +304,6 @@ const UsersManager = () => {
                 onChange={(e) => updateUserRole(user, e.target.value)}
                 className="role-select"
               >
-                <option value="user">Benutzer</option>
                 <option value="gamemaster">Spielleiter</option>
                 <option value="admin">Administrator</option>
               </select>

@@ -28,7 +28,7 @@ export const config = {
     ? optionalEnv('DB_USER', 'quiz_user')
     : requireEnv('DB_USER'),
   DB_PASSWORD: isDev
-    ? optionalEnv('DB_PASSWORD', 'quiz_password_123')
+    ? optionalEnv('DB_PASSWORD', 'dev-password-PLEASE-SET-DB_PASSWORD-in-env-file')
     : requireEnv('DB_PASSWORD'),
 
   PORT: parseInt(optionalEnv('PORT', '3001')),

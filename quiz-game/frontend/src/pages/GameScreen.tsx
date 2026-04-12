@@ -13,6 +13,8 @@ const GameScreen = () => {
     questionGrid,
     gameStatus,
     gameMode,
+    answerMode,
+    activeTeamId,
     selectedAnswer,
     timeRemaining,
     showResults,
@@ -32,11 +34,47 @@ const GameScreen = () => {
     type: 'success' | 'error' | 'info' | 'joker'
   }>>([])
 
+  // Declare early so it's available in all hooks below
+  const isAuthenticated = !!localStorage.getItem('adminUser')
+
+  // Gamemaster/admin: join game room as spectator-controller when no teamId
   useEffect(() => {
     if (!gameCode || !socket) {
-      navigate('/')
+      // Authenticated users (gamemaster) may not have a teamId but still need the screen
+      if (!isAuthenticated) navigate('/')
       return
     }
+
+    if (isAuthenticated && !teamId) {
+      socket.emit('spectate_game', { gameCode })
+
+      const handleSpectateJoined = (data: {
+        teams: { id: string; name: string; color: string; score: number; jokersRemaining: number }[]
+        status: 'waiting' | 'active' | 'finished'
+        questionGrid: { id: string; category: string; points: number; used: boolean; isRisiko: boolean }[][]
+        gameMode: 'quizmaster' | 'self_service'
+        answerMode?: 'competitive' | 'turns'
+        activeTeamId?: string | null
+      }) => {
+        updateGameState({
+          teams: data.teams,
+          gameStatus: data.status,
+          questionGrid: data.questionGrid || [],
+          gameMode: data.gameMode,
+          answerMode: data.answerMode || 'competitive',
+          activeTeamId: data.activeTeamId || null,
+        })
+      }
+
+      socket.on('spectate_joined', handleSpectateJoined)
+      return () => { socket.off('spectate_joined', handleSpectateJoined) }
+    }
+  // Only re-run when socket connection or game code changes, not on every state update
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameCode, socket])
+
+  useEffect(() => {
+    if (!gameCode || !socket) return
 
     socket.on('joker_used', (data) => {
       if (data.effect.type === 'extra_time' && data.effect.globalEffect) {
@@ -76,9 +114,34 @@ const GameScreen = () => {
       showNotification(message, isMyTeam ? (data.isCorrect ? 'success' : 'error') : 'info')
     })
 
+    socket.on('turn_changed', (data: { activeTeamId: string }) => {
+      updateGameState({ activeTeamId: data.activeTeamId })
+      const nextTeam = useGameStore.getState().teams.find(t => t.id === data.activeTeamId)
+      if (nextTeam) {
+        const isMe = data.activeTeamId === useGameStore.getState().teamId
+        showNotification(
+          isMe ? '🎯 Du bist dran!' : `${nextTeam.name} ist an der Reihe`,
+          isMe ? 'success' : 'info'
+        )
+      }
+    })
+
+    socket.on('game_started', (data: any) => {
+      updateGameState({
+        gameStatus: data.status,
+        teams: data.teams,
+        questionGrid: data.questionGrid || [],
+        gameMode: data.gameMode,
+        answerMode: data.answerMode || 'competitive',
+        activeTeamId: data.activeTeamId || null,
+      })
+    })
+
     return () => {
       socket.off('joker_used')
       socket.off('answer_result')
+      socket.off('turn_changed')
+      socket.off('game_started')
     }
   }, [socket, gameCode, teamId, navigate, updateGameState])
 
@@ -129,32 +192,34 @@ const GameScreen = () => {
   }
 
   const currentTeam = teams.find(team => team.id === teamId)
-  const isAuthenticated = !!localStorage.getItem('adminUser')
+  const activeTeam = answerMode === 'turns' ? teams.find(t => t.id === activeTeamId) : null
+  const isMyTurn = answerMode !== 'turns' || activeTeamId === teamId || isAuthenticated
+
+  const MEDALS = ['🥇', '🥈', '🥉']
 
   // Game finished screen
   if (gameStatus === 'finished') {
+    const finalRankings = rankings.length > 0
+      ? rankings
+      : [...teams].sort((a, b) => b.score - a.score).map((t, i) => ({ name: t.name, score: t.score, rank: i + 1 }))
     return (
       <div className="game-screen">
-        <div className="game-header">
-          <div className="game-info">
-            <span className="game-code">Code: {gameCode}</span>
-          </div>
-        </div>
-
         <div className="game-finished">
-          <h2>Spiel beendet!</h2>
-          <div className="rankings">
-            {(rankings.length > 0 ? rankings : teams.sort((a, b) => b.score - a.score).map((t, i) => ({ name: t.name, score: t.score, rank: i + 1 }))).map((entry) => (
-              <div key={entry.rank} className={`ranking-entry rank-${entry.rank}`}>
-                <span className="rank">#{entry.rank}</span>
-                <span className="name">{entry.name}</span>
-                <span className="score">{entry.score} Punkte</span>
-              </div>
-            ))}
+          <div className="game-finished-inner">
+            <div className="finished-title">🏆 Spiel beendet!</div>
+            <div className="rankings">
+              {finalRankings.map((entry) => (
+                <div key={entry.rank} className={`ranking-entry rank-${entry.rank}`}>
+                  <span className="rank-icon">{MEDALS[entry.rank - 1] ?? `#${entry.rank}`}</span>
+                  <span className="ranking-name">{entry.name}</span>
+                  <span className="ranking-score">{entry.score} Punkte</span>
+                </div>
+              ))}
+            </div>
+            <button className="btn-home" onClick={() => navigate('/')}>
+              Zur Startseite
+            </button>
           </div>
-          <button className="btn-home" onClick={() => navigate('/')}>
-            Zur Startseite
-          </button>
         </div>
       </div>
     )
@@ -180,12 +245,14 @@ const GameScreen = () => {
 
           {teams.length > 0 && (
             <div className="waiting-teams">
-              <h3>Teams ({teams.length}):</h3>
-              {teams.map(team => (
-                <div key={team.id} className="waiting-team" style={{ borderColor: team.color }}>
-                  {team.name}
-                </div>
-              ))}
+              <p className="waiting-teams-label">Beigetreten ({teams.length}):</p>
+              <div className="waiting-teams-list">
+                {teams.map(team => (
+                  <div key={team.id} className="waiting-team" style={{ background: team.color + '22', borderColor: team.color, color: team.color }}>
+                    {team.name}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -250,23 +317,56 @@ const GameScreen = () => {
           )}
         </div>
 
+        {isAuthenticated && (
+          <button
+            className="btn-end-game"
+            onClick={() => {
+              if (confirm('Spiel wirklich beenden?')) {
+                socket?.emit('end_game', { gameCode })
+              }
+            }}
+          >
+            Spiel beenden
+          </button>
+        )}
         <button className="leave-btn" onClick={() => navigate('/')}>
           Verlassen
         </button>
       </div>
+
+      {/* Turn Indicator */}
+      {answerMode === 'turns' && activeTeam && (
+        <div
+          className={`turn-indicator ${isMyTurn ? 'your-turn' : ''}`}
+          style={{ borderColor: activeTeam.color }}
+        >
+          <span className="turn-indicator-label">
+            {isMyTurn ? '🎯 Du bist dran!' : `${activeTeam.name} ist an der Reihe`}
+          </span>
+          <span className="turn-indicator-dot" style={{ background: activeTeam.color }} />
+        </div>
+      )}
 
       {/* Teams Display */}
       <div className="teams-display">
         {teams.map((team) => (
           <div
             key={team.id}
-            className={`team-card ${team.id === teamId ? 'current-team' : ''}`}
-            style={{ borderColor: team.color }}
+            className={`team-card ${team.id === teamId ? 'current-team' : ''} ${answerMode === 'turns' && team.id === activeTeamId ? 'active-turn-team' : ''}`}
+            style={{ '--team-color': team.color } as React.CSSProperties}
           >
-            <h3 style={{ color: team.color }}>{team.name}</h3>
-            <div className="score">{team.score}</div>
-            <div className="jokers">
-              <span className="joker-label">Joker: {team.jokersRemaining}</span>
+            <div className="team-color-bar" style={{ background: team.color }} />
+            {team.id === teamId && <span className="your-team-badge">DU</span>}
+            <h3 className="team-name" style={{ color: team.color }}>{team.name}</h3>
+            <div className="team-score-wrap">
+              <span className="team-score-value">{team.score}</span>
+              <span className="team-score-label">Pkt</span>
+            </div>
+            <div className="team-jokers">
+              {team.jokersRemaining > 0
+                ? Array.from({ length: team.jokersRemaining }).map((_, i) => <span key={i} className="joker-star">★</span>)
+                : <span className="no-jokers-text">Keine Joker</span>
+              }
             </div>
           </div>
         ))}
@@ -278,7 +378,9 @@ const GameScreen = () => {
         <div className="question-grid">
           <div className="grid-header">
             {gameMode === 'quizmaster' && !isAuthenticated ? (
-              <h2>Warte auf den Quizmaster...</h2>
+              <h2>Warte auf den Quizmaster…</h2>
+            ) : answerMode === 'turns' && !isMyTurn ? (
+              <h2>Warte auf {activeTeam?.name ?? 'das aktive Team'}…</h2>
             ) : (
               <h2>Wähle eine Kategorie und Punkte</h2>
             )}
@@ -308,12 +410,12 @@ const GameScreen = () => {
                             <button
                               className={`question-cell ${cell.used ? 'used' : ''} ${cell.isRisiko ? 'risiko' : ''}`}
                               onClick={() => handleQuestionSelect(cell.id)}
-                              disabled={cell.used}
-                              title={cell.isRisiko ? 'RISIKO Frage!' : ''}
+                              disabled={cell.used || (!isMyTurn && !isAuthenticated)}
+                              title={cell.isRisiko ? 'RISIKO Frage!' : (!isMyTurn && !isAuthenticated ? 'Nicht dein Zug' : '')}
                             >
-                              <div className="points">{cell.points}</div>
-                              {cell.isRisiko && <span className="risiko-badge">RISIKO</span>}
-                              {cell.used && <span className="used-badge">done</span>}
+                              {!cell.used && <div className="cell-points">{cell.points}</div>}
+                              {cell.isRisiko && !cell.used && <span className="risiko-badge">⚡ RISIKO</span>}
+                              {cell.used && <span className="used-check">✓</span>}
                             </button>
                           </td>
                         )
@@ -329,12 +431,11 @@ const GameScreen = () => {
         /* Question Display */
         <div className="question-display">
           <div className="question-header">
-            <span className="category">{currentQuestion.category}</span>
-            <span className="points">
-              {currentQuestion.points} Punkte
-              {activeJokerEffects.doublePoints && currentTeam && ' x 2'}
+            <span className="q-badge q-category">{currentQuestion.category}</span>
+            <span className="q-badge q-points">
+              {currentQuestion.points} Punkte{activeJokerEffects.doublePoints && currentTeam && ' ×2'}
             </span>
-            {currentQuestion.isRisiko && <span className="risiko-label">RISIKO</span>}
+            {currentQuestion.isRisiko && <span className="q-badge q-risiko">⚡ RISIKO</span>}
           </div>
 
           <h2 className="question-text">{currentQuestion.text}</h2>
@@ -349,22 +450,27 @@ const GameScreen = () => {
                   className={`option-button ${selectedAnswer === option.id ? 'selected' : ''} ${showResults ? 'disabled' : ''} ${isEliminated ? 'eliminated' : ''}`}
                   onClick={() => handleAnswerSelect(option.id)}
                   disabled={showResults || timeRemaining === 0 || isEliminated}
-                  style={{ opacity: isEliminated ? 0.3 : 1 }}
                 >
                   <span className="option-letter">{String.fromCharCode(65 + index)}</span>
                   <span className="option-text">
-                    {isEliminated ? 'Eliminiert' : option.text}
+                    {isEliminated ? '—' : option.text}
                   </span>
                 </button>
               )
             })}
           </div>
 
-          {!showResults && selectedAnswer !== null && timeRemaining > 0 && (
+          {!showResults && selectedAnswer !== null && timeRemaining > 0 && isMyTurn && (
             <button className="submit-answer" onClick={handleAnswerSubmit}>
               Antwort abgeben
               {activeJokerEffects.doublePoints && currentTeam && ' (Doppelte Punkte!)'}
             </button>
+          )}
+
+          {!showResults && !isMyTurn && timeRemaining > 0 && (
+            <div className="waiting-for-turn">
+              Warte auf {activeTeam?.name ?? 'das aktive Team'}…
+            </div>
           )}
 
           {timeRemaining === 0 && !showResults && (
@@ -374,7 +480,7 @@ const GameScreen = () => {
           )}
 
           {/* Joker Buttons */}
-          {currentTeam && currentTeam.jokersRemaining > 0 && !showResults && timeRemaining > 0 && (
+          {currentTeam && currentTeam.jokersRemaining > 0 && !showResults && timeRemaining > 0 && isMyTurn && (
             <div className="joker-controls">
               <h4>Joker verwenden ({currentTeam.jokersRemaining} verfügbar)</h4>
               <div className="joker-buttons">

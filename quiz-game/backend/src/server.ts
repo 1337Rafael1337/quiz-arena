@@ -14,7 +14,7 @@ import { pool } from './database/connection.js'
 import { GameEngine } from './models/GameEngine.js'
 import { createAdminRouter } from './routes/admin.js'
 import { createGamemasterRouter } from './routes/gamemaster.js'
-import { authenticateToken } from './middleware/auth.js'
+import { authenticateToken, requireAdmin } from './middleware/auth.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { escapeHtml } from './utils/sanitize.js'
 import { sendVerificationEmail, sendPasswordResetEmail } from './services/email.js'
@@ -258,7 +258,7 @@ app.post('/api/auth/logout', async (req: any, res, next) => {
 // Register new user (only admins can create users)
 app.post('/api/auth/register', authenticateToken, requireAdmin, async (req: any, res, next) => {
   try {
-    const { username, email, password, role = 'user' } = req.body
+    const { username, email, password, role = 'gamemaster' } = req.body
 
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'Username, Email und Passwort sind erforderlich' })
@@ -268,7 +268,7 @@ app.post('/api/auth/register', authenticateToken, requireAdmin, async (req: any,
       return res.status(400).json({ error: 'Passwort muss mindestens 8 Zeichen lang sein' })
     }
 
-    if (!['admin', 'gamemaster', 'user'].includes(role)) {
+    if (!['admin', 'gamemaster'].includes(role)) {
       return res.status(400).json({ error: 'Ungültige Rolle' })
     }
 
@@ -699,7 +699,9 @@ io.on('connection', (socket) => {
         teams: Array.from(game.teams.values()),
         status: game.status,
         questionGrid: game.questionGrid,
-        gameMode: game.gameMode
+        gameMode: game.gameMode,
+        answerMode: game.answerMode,
+        activeTeamId: gameEngine.getActiveTeamId(gameCode),
       }
 
       io.to(gameCode).emit('game_state_updated', gameState)
@@ -738,7 +740,9 @@ io.on('connection', (socket) => {
         teams: Array.from(game.teams.values()),
         status: game.status,
         questionGrid: game.questionGrid,
-        gameMode: game.gameMode
+        gameMode: game.gameMode,
+        answerMode: game.answerMode,
+        activeTeamId: gameEngine.getActiveTeamId(gameCode),
       })
 
       console.log(`Spectator joined game ${gameCode}`)
@@ -764,7 +768,9 @@ io.on('connection', (socket) => {
           status: 'active',
           teams: Array.from(game.teams.values()),
           questionGrid: game.questionGrid,
-          gameMode: game.gameMode
+          gameMode: game.gameMode,
+          answerMode: game.answerMode,
+          activeTeamId: gameEngine.getActiveTeamId(gameCode),
         })
       }
     } catch (error: any) {
@@ -789,7 +795,18 @@ io.on('connection', (socket) => {
         return
       }
 
-      const question = await gameEngine.selectQuestion(gameCode, questionId)
+      // In turns mode (self_service), only the active team can select
+      if (game.answerMode === 'turns' && game.gameMode === 'self_service' && !socket.data.authenticated) {
+        const activeTeamId = gameEngine.getActiveTeamId(gameCode)
+        if (socket.data.teamId !== activeTeamId) {
+          socket.emit('error', { message: 'Du bist nicht an der Reihe' })
+          return
+        }
+      }
+
+      // Pass selectingTeamId for engine-level validation (undefined for authenticated GMs)
+      const selectingTeamId = socket.data.authenticated ? undefined : (socket.data.teamId as string | undefined)
+      const question = await gameEngine.selectQuestion(gameCode, questionId, selectingTeamId)
 
       if (question) {
         io.to(gameCode).emit('question_selected', {
@@ -809,9 +826,15 @@ io.on('connection', (socket) => {
           questionGrid: game.questionGrid
         })
 
-        // Start server-side timer
+        // Start server-side timer; advance turn on time-up in turns mode
         gameEngine.startQuestionTimer(gameCode, question.timeLimit, () => {
           io.to(gameCode).emit('time_up', { gameCode })
+          if (game.answerMode === 'turns') {
+            const newActiveTeamId = gameEngine.advanceTurn(gameCode)
+            if (newActiveTeamId !== null) {
+              io.to(gameCode).emit('turn_changed', { activeTeamId: newActiveTeamId })
+            }
+          }
         })
       }
     } catch (error: any) {
@@ -836,8 +859,14 @@ io.on('connection', (socket) => {
           wasRisiko: result.wasRisiko,
           wasDoublePoints: result.wasDoublePoints,
           correctOptionId: result.correctOptionId,
+          newActiveTeamId: result.newActiveTeamId,
           teams: game ? Array.from(game.teams.values()) : []
         })
+
+        // Broadcast turn change separately so all clients update their UI
+        if (result.newActiveTeamId !== null) {
+          io.to(gameCode).emit('turn_changed', { activeTeamId: result.newActiveTeamId })
+        }
       }
     } catch (error: any) {
       socket.emit('error', { message: error.message || 'Fehler beim Antworten' })

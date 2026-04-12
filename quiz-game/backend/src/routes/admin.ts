@@ -446,7 +446,7 @@ export function createAdminRouter(gameEngine: GameEngine, io?: Server) {
   // Create game
   router.post('/games', async (req, res, next) => {
     try {
-      const { name, maxTeams, jokerCount, risikoEnabled, gameMode } = req.body
+      const { name, maxTeams, jokerCount, risikoEnabled, gameMode, answerMode } = req.body
 
       if (!name) {
         return res.status(400).json({ error: 'Spielname ist erforderlich' })
@@ -455,8 +455,8 @@ export function createAdminRouter(gameEngine: GameEngine, io?: Server) {
       const gameCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
       const result = await pool.query(`
-        INSERT INTO game_sessions (name, game_code, creator_id, max_teams, joker_count, risiko_enabled, game_mode)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO game_sessions (name, game_code, creator_id, max_teams, joker_count, risiko_enabled, game_mode, answer_mode)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id, game_code
       `, [
         escapeHtml(name),
@@ -465,7 +465,8 @@ export function createAdminRouter(gameEngine: GameEngine, io?: Server) {
         maxTeams || 4,
         jokerCount ?? 3,
         risikoEnabled ?? true,
-        gameMode || 'self_service'
+        gameMode || 'self_service',
+        answerMode || 'competitive'
       ])
 
       // Load game into engine
@@ -560,7 +561,7 @@ export function createAdminRouter(gameEngine: GameEngine, io?: Server) {
         return res.status(400).json({ error: 'Username und Email sind erforderlich' })
       }
 
-      if (!['admin', 'gamemaster', 'user'].includes(role)) {
+      if (!['admin', 'gamemaster'].includes(role)) {
         return res.status(400).json({ error: 'Ungültige Rolle' })
       }
 

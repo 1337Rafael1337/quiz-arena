@@ -87,14 +87,15 @@ input, select, textarea {
 [data-theme="light"] .category-item { background: #fff; border: 1px solid #e5e7eb; color: #1a1a2e; }
 [data-theme="light"] .question-text,
 [data-theme="light"] .question-options .option { color: #374151; }
-[data-theme="light"] .question-options .option.correct { background: rgba(34, 197, 94, 0.1); }
+[data-theme="light"] .question-options .option.correct { background: rgba(34, 197, 94, 0.1); color: #166534; }
+[data-theme="light"] .correct-mark { color: #16a34a; }
 [data-theme="light"] .filters input,
 [data-theme="light"] .filters select,
 [data-theme="light"] .question-form input,
 [data-theme="light"] .question-form select,
 [data-theme="light"] .question-form textarea { background: #fff; color: #1a1a2e; border-color: #d1d5db; }
-[data-theme="light"] .question-form { background: #fff; color: #1a1a2e; }
-[data-theme="light"] .question-form-overlay { background: rgba(0, 0, 0, 0.3); }
+[data-theme="light"] .question-form { background: #fff !important; color: #1a1a2e; border-color: #e5e7eb !important; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important; }
+[data-theme="light"] .question-form-overlay { background: rgba(0, 0, 0, 0.35); }
 [data-theme="light"] .stat-card { background: #fff; border: 1px solid #e5e7eb; color: #1a1a2e; }
 [data-theme="light"] .stat-label { color: #6b7280; }
 [data-theme="light"] .empty-state { color: #6b7280; }
@@ -132,3 +133,35 @@ input, select, textarea {
 [data-theme="light"] .option-input { background: #f3f4f6; }
 [data-theme="light"] .option { background: #f3f4f6; }
 [data-theme="light"] .loading { color: #6b7280; }
+
+/* Light mode: gamemaster game cards */
+[data-theme="light"] .game-card { background: #fff; border: 1px solid #e5e7eb; }
+[data-theme="light"] .game-title h3 { color: #1a1a2e; }
+[data-theme="light"] .games-header h2 { color: #1a1a2e; }
+[data-theme="light"] .game-code { background: rgba(99, 102, 241, 0.08); color: #4f46e5; }
+[data-theme="light"] .btn-copy { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
+[data-theme="light"] .gm-info-box { background: rgba(99, 102, 241, 0.06); border-color: rgba(99, 102, 241, 0.25); color: #374151; }
+
+/* Light mode: game screen */
+[data-theme="light"] .game-screen { background: linear-gradient(160deg, #f0f0ff 0%, #e8e8f5 100%); }
+[data-theme="light"] .game-header { background: rgba(0,0,0,0.04); border-bottom-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .teams-display { background: rgba(0,0,0,0.02); border-bottom-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .team-card { background: #fff; border-color: rgba(0,0,0,0.1); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+[data-theme="light"] .team-card.current-team { background: #f5f3ff; }
+[data-theme="light"] .team-score-value { color: #1a1a2e; }
+[data-theme="light"] .team-score-label { color: #6b7280; }
+[data-theme="light"] .no-jokers-text { color: #9ca3af; }
+[data-theme="light"] .question-text { color: #1a1a2e; }
+[data-theme="light"] .option-button { background: #fff; border-color: #d1d5db; color: #1a1a2e; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+[data-theme="light"] .option-button:hover:not(.disabled):not(:disabled):not(.eliminated) { background: #f5f3ff; border-color: #6366f1; }
+[data-theme="light"] .option-letter { background: rgba(0,0,0,0.08); color: #374151; }
+[data-theme="light"] .question-cell { background: #fff; border-color: #d1d5db; }
+[data-theme="light"] .question-cell:hover:not(.used):not(:disabled) { background: #f5f3ff; border-color: #6366f1; }
+[data-theme="light"] .question-cell.used { background: #f9fafb; border-color: #e5e7eb; }
+[data-theme="light"] .cell-points { color: #1a1a2e; }
+[data-theme="light"] .questions-table .category-header { background: rgba(99, 102, 241, 0.1); color: #4f46e5; }
+[data-theme="light"] .waiting-screen h2 { color: #1a1a2e; }
+[data-theme="light"] .game-finished { background: radial-gradient(ellipse at center, rgba(99,102,241,0.06) 0%, transparent 70%); }
+[data-theme="light"] .ranking-entry { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .ranking-name { color: #1a1a2e; }
+[data-theme="light"] .grid-header h2 { color: #6b7280; }

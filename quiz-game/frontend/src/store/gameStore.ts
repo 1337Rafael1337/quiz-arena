@@ -45,6 +45,8 @@ interface GameStore {
   currentQuestion: Question | null
   gameStatus: 'waiting' | 'active' | 'finished'
   gameMode: 'quizmaster' | 'self_service'
+  answerMode: 'competitive' | 'turns'
+  activeTeamId: string | null
   questionGrid: QuestionCell[][]
   rankings: Ranking[]
 
@@ -71,6 +73,8 @@ export const useGameStore = create<GameStore>((set) => ({
   currentQuestion: null,
   gameStatus: 'waiting',
   gameMode: 'self_service',
+  answerMode: 'competitive',
+  activeTeamId: null,
   questionGrid: [],
   rankings: [],
   selectedAnswer: null,
@@ -89,6 +93,8 @@ export const useGameStore = create<GameStore>((set) => ({
     currentQuestion: null,
     gameStatus: 'waiting',
     gameMode: 'self_service',
+    answerMode: 'competitive',
+    activeTeamId: null,
     questionGrid: [],
     rankings: [],
     selectedAnswer: null,

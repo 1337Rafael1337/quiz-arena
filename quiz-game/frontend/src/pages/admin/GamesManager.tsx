@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import QRModal from '../../lib/QRModal'
+import { useGameStore } from '../../store/gameStore'
 
 interface Game {
   id: number
@@ -12,6 +13,7 @@ interface Game {
   joker_count: number
   risiko_enabled: boolean
   game_mode: string
+  answer_mode: string
   status: string
   team_count: number
   created_at: string
@@ -19,6 +21,7 @@ interface Game {
 
 const GamesManager = () => {
   const navigate = useNavigate()
+  const { socket, updateGameState } = useGameStore()
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -29,7 +32,8 @@ const GamesManager = () => {
     maxTeams: 4,
     jokerCount: 3,
     risikoEnabled: true,
-    gameMode: 'self_service' as 'quizmaster' | 'self_service'
+    gameMode: 'self_service' as 'quizmaster' | 'self_service',
+    answerMode: 'competitive' as 'competitive' | 'turns'
   })
 
   useEffect(() => {
@@ -96,6 +100,26 @@ const GamesManager = () => {
     return mode === 'quizmaster' ? 'Quizmaster' : 'Selbstbedienung'
   }
 
+  const handleStartGame = (gameCode: string) => {
+    if (!socket) {
+      alert('Keine Socket-Verbindung. Bitte Seite neu laden.')
+      return
+    }
+    socket.emit('start_game', { gameCode })
+    updateGameState({
+      gameCode,
+      teamId: null,
+      teams: [],
+      gameStatus: 'waiting',
+      questionGrid: [],
+      currentQuestion: null,
+      showResults: false,
+      selectedAnswer: null,
+      rankings: []
+    })
+    navigate('/game')
+  }
+
   const handleDeleteGame = async (id: number, name: string) => {
     if (!confirm(`Spiel "${name}" wirklich löschen? Alle Teams und Ergebnisse werden entfernt.`)) return
     try {
@@ -123,7 +147,8 @@ const GamesManager = () => {
       maxTeams: 4,
       jokerCount: 3,
       risikoEnabled: true,
-      gameMode: 'self_service'
+      gameMode: 'self_service',
+      answerMode: 'competitive'
     })
   }
 
@@ -164,6 +189,17 @@ const GamesManager = () => {
                   >
                     <option value="self_service">Selbstbedienung (Teams wählen selbst)</option>
                     <option value="quizmaster">Quizmaster (Spielleiter steuert)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Antwortmodus</label>
+                  <select
+                    value={formData.answerMode}
+                    onChange={(e) => setFormData({...formData, answerMode: e.target.value as 'competitive' | 'turns'})}
+                  >
+                    <option value="competitive">Gleichzeitig (alle antworten)</option>
+                    <option value="turns">Reihum (ein Team pro Runde)</option>
                   </select>
                 </div>
 
@@ -234,6 +270,9 @@ const GamesManager = () => {
                 <span className="mode-badge">
                   {getModeText(game.game_mode)}
                 </span>
+                <span className="mode-badge" style={{ background: game.answer_mode === 'turns' ? 'rgba(14,165,233,0.2)' : 'rgba(99,102,241,0.2)', color: game.answer_mode === 'turns' ? '#38bdf8' : '#a5b4fc' }}>
+                  {game.answer_mode === 'turns' ? 'Reihum' : 'Gleichzeitig'}
+                </span>
               </div>
 
               <div className="game-code-section">
@@ -291,6 +330,24 @@ const GamesManager = () => {
             </div>
 
             <div className="question-actions">
+              {game.status === 'waiting' && (
+                <button
+                  className="btn-start-game"
+                  onClick={() => handleStartGame(game.game_code)}
+                  disabled={game.team_count < 1}
+                  title={game.team_count < 1 ? 'Mindestens 1 Team muss beitreten' : ''}
+                >
+                  ▶ Spiel starten ({game.team_count} Team{game.team_count !== 1 ? 's' : ''})
+                </button>
+              )}
+              {game.status === 'active' && (
+                <button className="btn-save" onClick={() => {
+                  updateGameState({ gameCode: game.game_code, teamId: null, teams: [], gameStatus: 'active', questionGrid: [], currentQuestion: null, showResults: false, selectedAnswer: null, rankings: [] })
+                  navigate('/game')
+                }}>
+                  ▶ Zum laufenden Spiel
+                </button>
+              )}
               <button className="btn-edit" onClick={() => copyGameCode(game.game_code)}>
                 Code teilen
               </button>
